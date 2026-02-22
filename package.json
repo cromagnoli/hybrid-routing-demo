@@ -1,0 +1,17 @@
+{
+  "name": "cromagnoli-hybrid-routing-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node runtime-server.mjs",
+    "dev": "node runtime-server.mjs"
+  },
+  "dependencies": {
+    "@hapi/hapi": "^20.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^6.1.1"
+  }
+}
