@@ -12,6 +12,8 @@ const SERVER_HOST = process.env.HOST ?? "0.0.0.0";
 const NEXTGEN_ROOT = path.resolve(__dirname, "nextgen-app");
 
 const DEFAULT_PRODUCT_NAME = "White Loop Runner";
+const DEFAULT_COLOR_CODE = "ffffff";
+const ALLOWED_COLOR_CODES = ["ffffff", "444444", "22c55e"];
 const FRAME_ANCESTORS =
   process.env.FRAME_ANCESTORS ??
   "'self' https://cromagnoli.github.io http://localhost:3000 http://127.0.0.1:3000";
@@ -25,6 +27,7 @@ const routingStateByProductId = new Map();
 let routingEventSeq = 0;
 const routingEvents = [];
 const MAX_ROUTING_EVENTS = 250;
+let currentDemoSessionId = null;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -86,7 +89,13 @@ const parseContext = (request) => {
     productId,
     routingMode: queryRoutingMode ?? stored.routingMode,
     simulateFailure: querySimulateFailure ?? stored.simulateFailure,
+    selectedColorCode:
+      resolveColorCodeInput(request.query.colorCode) ?? DEFAULT_COLOR_CODE,
     legacyQuery: request.query.legacy === "true",
+    demoSessionId:
+      typeof request.query.demoSessionId === "string" && request.query.demoSessionId
+        ? request.query.demoSessionId
+        : "session-unknown",
   };
 };
 
@@ -109,6 +118,15 @@ const getStoredProductName = (productId) =>
 
 const setStoredProductName = (productId, productName) => {
   productNameByProductId.set(productId, sanitizeProductName(productName));
+};
+
+const resolveColorCodeInput = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return ALLOWED_COLOR_CODES.includes(normalized) ? normalized : null;
 };
 
 const getRoutingState = (productId) => {
@@ -151,6 +169,48 @@ const resolveBooleanInput = (value) => {
 };
 
 const appendRoutingEvent = ({ context, evaluation, method, path }) => {
+  const sessionId = context.demoSessionId ?? "session-unknown";
+
+  if (currentDemoSessionId !== sessionId) {
+    if (currentDemoSessionId !== null) {
+      routingEventSeq += 1;
+      routingEvents.push({
+        id: routingEventSeq,
+        at: new Date().toISOString(),
+        method: "INFO",
+        path: "",
+        productId: context.productId,
+        route: "legacy",
+        reason: "session-end",
+        fallback: false,
+        legacyQuery: false,
+        routingMode: context.routingMode,
+        simulateFailure: context.simulateFailure,
+        marker: "SESSION_END",
+        sessionId: currentDemoSessionId,
+      });
+    }
+
+    routingEventSeq += 1;
+    routingEvents.push({
+      id: routingEventSeq,
+      at: new Date().toISOString(),
+      method: "INFO",
+      path: "",
+      productId: context.productId,
+      route: "legacy",
+      reason: "session-beginning",
+      fallback: false,
+      legacyQuery: false,
+      routingMode: context.routingMode,
+      simulateFailure: context.simulateFailure,
+      marker: "SESSION_BEGINNING",
+      sessionId,
+    });
+
+    currentDemoSessionId = sessionId;
+  }
+
   routingEventSeq += 1;
   routingEvents.push({
     id: routingEventSeq,
@@ -164,15 +224,100 @@ const appendRoutingEvent = ({ context, evaluation, method, path }) => {
     legacyQuery: evaluation.queryLegacy,
     routingMode: context.routingMode,
     simulateFailure: context.simulateFailure,
+    sessionId,
   });
 
-  if (routingEvents.length > MAX_ROUTING_EVENTS) {
+  while (routingEvents.length > MAX_ROUTING_EVENTS) {
     routingEvents.shift();
   }
 };
 
+
+const LEGACY_SNAPSHOT_SCRIPT = `
+    <script>
+      (function () {
+        var sendSnapshot = function () {
+          try {
+            window.parent.postMessage(
+              {
+                type: "IFRAME_HTML_SNAPSHOT",
+                html: document.documentElement.outerHTML,
+                href: window.location.href,
+              },
+              "*"
+            );
+          } catch (e) {}
+        };
+
+        var notifyNavigationStart = function () {
+          try {
+            window.parent.postMessage({ type: "IFRAME_NAVIGATION_START" }, "*");
+          } catch (e) {}
+        };
+
+        document.addEventListener(
+          "click",
+          function (event) {
+            var target = event.target;
+            if (!target || !(target instanceof Element)) {
+              return;
+            }
+            var link = target.closest("a[href]");
+            if (link) {
+              notifyNavigationStart();
+            }
+          },
+          true
+        );
+
+        document.addEventListener(
+          "submit",
+          function () {
+            notifyNavigationStart();
+          },
+          true
+        );
+
+        window.addEventListener("message", function (event) {
+          if (event && event.data && event.data.type === "REQUEST_HTML_SNAPSHOT") {
+            sendSnapshot();
+          }
+        });
+
+        sendSnapshot();
+      })();
+    </script>
+`;
+
 const renderLegacyPage = (context, evaluation) => {
   const safeProductName = escapeHtml(context.productName);
+  const safeSessionId = encodeURIComponent(context.demoSessionId ?? "session-unknown");
+  const selectedColorCode =
+    resolveColorCodeInput(context.selectedColorCode) ?? DEFAULT_COLOR_CODE;
+  const colorMeta = {
+    ffffff: "White",
+    "444444": "Graphite",
+    "22c55e": "Vivid Green",
+  };
+  const selectedColorName = colorMeta[selectedColorCode] ?? "White";
+  const productImageUrl = `/images/sneakers-${selectedColorCode}.png`;
+  const colorLinks = ALLOWED_COLOR_CODES.map((code) => {
+    const isSelected = code === selectedColorCode;
+    const colorQuery = new URLSearchParams({
+      demoSessionId: String(context.demoSessionId ?? "session-unknown"),
+      colorCode: code,
+    });
+    if (context.simulateFailure) {
+      colorQuery.set("simulateFailure", "true");
+    }
+    const colorHref = `/pdp/running-sneakers/white-loop-runner/${encodeURIComponent(
+      context.productId
+    )}/?${colorQuery.toString()}`;
+
+    return `<a href="${colorHref}" class="color-btn-link ${
+      isSelected ? "active" : ""
+    }" title="${colorMeta[code] ?? code}"><span style="background:#${code};"></span></a>`;
+  }).join("");
 
   return `
 <!doctype html>
@@ -189,7 +334,6 @@ const renderLegacyPage = (context, evaluation) => {
       }
       .page {
         max-width: 980px;
-        margin: 18px auto;
         border: 3px ridge #95b0d7;
         background: #13355d;
         box-shadow: 0 0 0 4px #0b2440;
@@ -234,7 +378,6 @@ const renderLegacyPage = (context, evaluation) => {
         padding: 12px;
       }
       table {
-        width: 100%;
         border-collapse: collapse;
         background: #0f2f55;
       }
@@ -252,7 +395,6 @@ const renderLegacyPage = (context, evaluation) => {
         background: #112f52;
       }
       .legacy-shoe {
-        width: 100%;
         height: 260px;
         border: 1px dashed #9ab2d8;
         background: #ffffff;
@@ -266,6 +408,18 @@ const renderLegacyPage = (context, evaluation) => {
         object-fit: contain;
         display: block;
       }
+      .back-link {
+        display: inline-block;
+        margin: 0 0 10px;
+        padding: 6px 10px;
+        color: #fff3af;
+        font-size: 12px;
+        font-weight: bold;
+        text-decoration: none;
+        border: 1px solid #9ab2d8;
+        background: #0f2f55;
+        animation: legacy-blink 1s steps(1, end) infinite;
+      }
       .title {
         margin: 0 0 6px;
         font-size: 25px;
@@ -275,6 +429,36 @@ const renderLegacyPage = (context, evaluation) => {
         margin: 0 0 12px;
         color: #d4e2ff;
         font-size: 12px;
+      }
+      .color-form {
+        margin: 10px 0 12px;
+      }
+      .color-form-label {
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: #d4e2ff;
+      }
+      .color-grid {
+        display: flex;
+        gap: 8px;
+      }
+      .color-btn-link {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #6e8bbb;
+        background: #0f2f55;
+        padding: 2px;
+        display: inline-block;
+        text-decoration: none;
+      }
+      .color-btn-link span {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .color-btn-link.active {
+        border-color: #fff3af;
+        box-shadow: 0 0 0 1px #fff3af inset;
       }
       .price {
         color: #fff3af;
@@ -322,19 +506,24 @@ const renderLegacyPage = (context, evaluation) => {
         <table>
           <tr>
             <td class="left">
-              <div class="legacy-shoe"><img src="/images/sneakers-ffffff.png" alt="BuyMeNot White Loop Runner"/></div>
+              <div class="legacy-shoe"><img src="${productImageUrl}" alt="BuyMeNot ${selectedColorName} Loop Runner"/></div>
             </td>
             <td class="right">
+              <a class="back-link" href="/cdp/running-sneakers/white-loop-runner/${encodeURIComponent(context.productId)}/?demoSessionId=${safeSessionId}">Back to product category</a>
               <h1 class="title">${safeProductName}</h1>
               <p class="subtitle">Classic HTML table layout for legacy storefront.</p>
               <div>
                 <span class="price">$118.00</span>
                 <span class="old">$138.00</span>
               </div>
+              <div class="color-form">
+                <div class="color-form-label">Color (full page reload via querystring)</div>
+                <div class="color-grid">${colorLinks}</div>
+              </div>
               <div class="meta">
                 SKU: LEG-WHT-0065<br/>
                 Size: 6.5 US<br/>
-                Color: White<br/>
+                Color: ${escapeHtml(selectedColorName)}<br/>
                 Product ID: ${escapeHtml(context.productId)}
               </div>
               <div class="status">
@@ -349,33 +538,238 @@ const renderLegacyPage = (context, evaluation) => {
         </table>
       </div>
     </div>
-    <script>
-      (function () {
-        var sendSnapshot = function () {
-          try {
-            window.parent.postMessage(
-              {
-                type: "IFRAME_HTML_SNAPSHOT",
-                html: document.documentElement.outerHTML,
-              },
-              "*"
-            );
-          } catch (e) {}
-        };
-
-        window.addEventListener("message", function (event) {
-          if (event && event.data && event.data.type === "REQUEST_HTML_SNAPSHOT") {
-            sendSnapshot();
-          }
-        });
-
-        sendSnapshot();
-      })();
-    </script>
+${LEGACY_SNAPSHOT_SCRIPT}
   </body>
 </html>
 `;
 };
+
+const renderLegacyCategoryPage = ({
+  productCategory,
+  productSlug,
+  productId,
+  simulateFailure,
+  demoSessionId,
+}) => {
+  const readableCategory = productCategory
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const safeCategory = escapeHtml(readableCategory || "Product Category");
+  const safeProductName = escapeHtml(getStoredProductName(productId));
+  const href = `/pdp/${encodeURIComponent(productCategory)}/${encodeURIComponent(productSlug)}/${encodeURIComponent(productId)}/`;
+  const queryParams = new URLSearchParams();
+  if (simulateFailure) {
+    queryParams.set("simulateFailure", "true");
+  }
+  if (demoSessionId) {
+    queryParams.set("demoSessionId", String(demoSessionId));
+  }
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
+
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BuyMeNot Legacy Category</title>
+    <style>
+      body {
+        margin: 0;
+        background: #041e35;
+        color: #f6f1c7;
+        font-family: "Verdana", "Tahoma", sans-serif;
+      }
+      .page {
+        max-width: 980px;
+        border: 3px ridge #95b0d7;
+        background: #13355d;
+        box-shadow: 0 0 0 4px #0b2440;
+      }
+      .topbar {
+        background: linear-gradient(90deg, #264f86, #1b3562);
+        border-bottom: 2px solid #8da8cf;
+        padding: 8px 12px;
+      }
+      .logo-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .iso {
+        width: 26px;
+        height: 26px;
+        border: 1px solid #b8cbe8;
+        background: #102a4a;
+        font-size: 16px;
+        line-height: 26px;
+        text-align: center;
+        color: #e9f0ff;
+        font-weight: bold;
+      }
+      .wordmark {
+        color: #ffffff;
+        letter-spacing: 0.08em;
+        font-weight: bold;
+        font-size: 13px;
+      }
+      .wordmark .cap {
+        font-size: 1.25em;
+      }
+      .variant {
+        float: right;
+        color: #d4e2ff;
+        font-size: 11px;
+        margin-top: 7px;
+      }
+      .content {
+        padding: 16px;
+      }
+      .section-title {
+        margin: 0 0 10px;
+        color: #ffffff;
+        font-size: 18px;
+      }
+      .section-subtitle {
+        margin: 0 0 14px;
+        color: #d4e2ff;
+        font-size: 12px;
+      }
+      .section-subtitle.blink {
+        animation: legacy-blink 1s steps(1, end) infinite;
+      }
+      .blink {
+        animation: legacy-blink 1s steps(1, end) infinite;
+      }
+      @keyframes legacy-blink {
+        50% { opacity: 0.15; }
+      }
+      .tiles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .card-link {
+        display: block;
+        width: 240px;
+        flex: 0 0 240px;
+        box-sizing: border-box;
+        text-decoration: none;
+      }
+      .card {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #7f9dcc;
+        background: #0d2a4b;
+        padding: 10px;
+      }
+      .card-link:hover .card {
+        border-color: #a9bde0;
+      }
+      .card-muted {
+        width: 240px;
+        flex: 0 0 240px;
+        box-sizing: border-box;
+        border: 1px solid #5f7499;
+        background: #19365c;
+        padding: 10px;
+        opacity: 0.45;
+        filter: grayscale(0.8);
+      }
+      .thumb {
+        width: 100%;
+        height: 190px;
+        background: #ffffff;
+        border: 1px dashed #9ab2d8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+      .product-title {
+        margin: 10px 0 6px;
+        font-size: 16px;
+        color: #ffffff;
+      }
+      .link {
+        color: #fff3af;
+        font-size: 13px;
+        font-weight: bold;
+        text-decoration: underline;
+      }
+      .meta {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #dbe7ff;
+      }
+      .notice {
+        margin-top: 14px;
+        font-size: 12px;
+        color: #f6f1c7;
+      }
+      .pager {
+        margin-top: 12px;
+        font-size: 12px;
+        color: #d4e2ff;
+      }
+      .pager span {
+        display: inline-block;
+        margin-right: 8px;
+        padding: 2px 6px;
+        border: 1px solid #7f9dcc;
+        background: #10335a;
+      }
+      .pager .active {
+        color: #fff3af;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="topbar">
+        <div class="logo-wrap">
+          <div class="iso">B</div>
+          <div class="wordmark"><span class="cap">B</span>uy<span class="cap">M</span>e<span class="cap">N</span>ot</div>
+        </div>
+        <span class="variant">Legacy Product Category</span>
+      </div>
+      <div class="content">
+        <h1 class="section-title">${safeCategory}</h1>
+        <p class="section-subtitle blink">Legacy entry page. Click the product to open the product detail page.</p>
+        <div class="tiles">
+          <a class="card-link" href="${href}${query}">
+            <div class="card">
+              <div class="thumb"><img src="/images/sneakers-ffffff.png" alt="BuyMeNot White Loop Runner"/></div>
+              <h2 class="product-title">${safeProductName}</h2>
+              <div class="link">Open product detail page</div>
+              <div class="meta">Product ID: ${escapeHtml(productId)}</div>
+            </div>
+          </a>
+          <div class="card-muted" aria-hidden="true">
+            <div class="thumb"><img src="/images/sneakers-22c55e.png" alt="Decorative product tile"/></div>
+            <h2 class="product-title">BuyMeNot Street Drift</h2>
+            <div class="link">Coming soon</div>
+            <div class="meta">Product ID: prod9912</div>
+          </div>
+        </div>
+        <div class="notice blink">Routing mode is resolved when the product detail page is requested.</div>
+        <div class="pager" aria-hidden="true">
+          <span class="active">1</span><span>2</span><span>3</span><span>Next »</span>
+        </div>
+      </div>
+    </div>
+${LEGACY_SNAPSHOT_SCRIPT}
+  </body>
+</html>
+`;
+};
+
 
 const ensureViteServer = async () => {
   if (viteServer) {
@@ -422,6 +816,7 @@ const runViteMiddleware = async (request, h) => {
 const injectBootstrapContext = (html, context) => {
   const bootstrapPayload = JSON.stringify({
     productName: context.productName,
+    selectedColorCode: context.selectedColorCode,
     simulateFailure: context.simulateFailure,
   }).replace(
     /<\//g,
@@ -493,10 +888,47 @@ const start = async () => {
         .response({
           ...evaluateRouting(context),
           productName: getStoredProductName(context.productId),
+          selectedColorCode: context.selectedColorCode,
           routingMode: context.routingMode,
           simulateFailure: context.simulateFailure,
         })
         .type("application/json");
+    },
+  });
+
+  hapiServer.route({
+    method: "GET",
+    path: "/cdp/{productCategory}/{productName}/{productId}/",
+    handler: (request, h) => {
+      const context = parseContext(request);
+      const productCategory = String(request.params.productCategory ?? "running-sneakers");
+      const productSlug = String(request.params.productName ?? "white-loop-runner");
+
+      const evaluation = {
+        route: "legacy",
+        reason: "legacy-category-entry",
+        fallback: false,
+        queryLegacy: false,
+      };
+
+      appendRoutingEvent({
+        context,
+        evaluation,
+        method: request.method,
+        path: request.path,
+      });
+
+      return withFrameHeaders(
+        h.response(
+          renderLegacyCategoryPage({
+            productCategory,
+            productSlug,
+            productId: context.productId,
+            simulateFailure: context.simulateFailure,
+            demoSessionId: context.demoSessionId,
+          })
+        )
+      );
     },
   });
 
@@ -536,18 +968,18 @@ const start = async () => {
       const pageContext = {
         ...context,
         productName: effectiveProductName,
+        selectedColorCode: context.selectedColorCode
       };
 
-      const reactivePost =
-        request.method === "post" && request.query.reactive === "1";
-
-      if (reactivePost && evaluation.route === "nextgen") {
+      if (request.method === "post") {
         await sleep(650);
-        return h.response({ ok: true, productName: effectiveProductName }).type("application/json");
-      }
-
-      if (request.method === "post" && evaluation.route === "legacy") {
-        await sleep(1000);
+        return h
+          .response({
+            ok: true,
+            productName: effectiveProductName,
+            selectedColorCode: pageContext.selectedColorCode,
+          })
+          .type("application/json");
       }
 
       if (evaluation.route === "nextgen" && !evaluation.fallback && !evaluation.queryLegacy) {

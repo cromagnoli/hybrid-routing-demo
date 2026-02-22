@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 
 type BootstrapContext = {
   productName?: string;
+  selectedColorCode?: string;
   simulateFailure?: boolean;
 };
 
@@ -12,6 +13,21 @@ declare global {
 }
 
 const DEFAULT_PRODUCT_NAME = "White Loop Runner";
+
+const COLOR_OPTIONS = [
+  { code: "ffffff", label: "White", imageUrl: "/images/sneakers-ffffff.png" },
+  { code: "444444", label: "Graphite", imageUrl: "/images/sneakers-444444.png" },
+  { code: "22c55e", label: "Vivid Green", imageUrl: "/images/sneakers-22c55e.png" },
+] as const;
+
+const DEFAULT_COLOR_CODE = "ffffff";
+
+const getInitialColorCode = () => {
+  const raw = getBootstrap().selectedColorCode;
+  return COLOR_OPTIONS.some((option) => option.code === raw)
+    ? (raw as (typeof COLOR_OPTIONS)[number]["code"])
+    : DEFAULT_COLOR_CODE;
+};
 
 const getBootstrap = (): BootstrapContext => window.__PDP_CONTEXT__ ?? {};
 
@@ -29,12 +45,44 @@ const postHtmlSnapshot = () => {
       {
         type: "IFRAME_HTML_SNAPSHOT",
         html,
+        href: window.location.href,
       },
       "*"
     );
   } catch {
     // noop
   }
+};
+
+const postNavigationStart = () => {
+  try {
+    window.parent.postMessage({ type: "IFRAME_NAVIGATION_START" }, "*");
+  } catch {
+    // noop
+  }
+};
+
+const getCategoryHref = () => {
+  const url = new URL(window.location.href);
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (segments.length < 4) {
+    return `/cdp/running-sneakers/white-loop-runner/prod1234/`;
+  }
+
+  const productCategory = segments[1] ?? "running-sneakers";
+  const productSlug = segments[2] ?? "white-loop-runner";
+  const productId = segments[3] ?? "prod1234";
+
+  const target = new URL(
+    `${url.origin}/cdp/${productCategory}/${productSlug}/${productId}/`
+  );
+
+  const demoSessionId = url.searchParams.get("demoSessionId");
+  if (demoSessionId) {
+    target.searchParams.set("demoSessionId", demoSessionId);
+  }
+
+  return target.toString();
 };
 
 const redirectToLegacyFromBoundary = () => {
@@ -85,29 +133,20 @@ const BuyMeNotLogo = () => (
 
 const AppContent = () => {
   const [productName, setProductName] = useState(getInitialProductName());
+  const [selectedColorCode, setSelectedColorCode] = useState(getInitialColorCode());
   const [lastUpdate, setLastUpdate] = useState("Loaded from server render");
   const shouldCrash = getShouldSimulateFailure();
+  const selectedColor =
+    COLOR_OPTIONS.find((option) => option.code === selectedColorCode) ??
+    COLOR_OPTIONS[0];
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      const data = event.data as { type?: string; productName?: string };
+      const data = event.data as { type?: string };
 
       if (data?.type === "REQUEST_HTML_SNAPSHOT") {
         postHtmlSnapshot();
-        return;
       }
-
-      if (data?.type !== "PDP_NAME_UPDATE") {
-        return;
-      }
-
-      const nextName =
-        typeof data.productName === "string" && data.productName.trim()
-          ? data.productName.trim()
-          : DEFAULT_PRODUCT_NAME;
-
-      setProductName(nextName);
-      setLastUpdate(`Reactive parent POST at ${new Date().toLocaleTimeString()}`);
     };
 
     window.addEventListener("message", onMessage);
@@ -117,7 +156,7 @@ const AppContent = () => {
 
   useEffect(() => {
     postHtmlSnapshot();
-  }, [productName, lastUpdate]);
+  }, [productName, lastUpdate, selectedColorCode]);
 
   return (
     <div className="page">
@@ -131,12 +170,19 @@ const AppContent = () => {
         <section className="mediaPanel">
           <img
             className="shoeGraphic"
-            src="/images/sneakers-ffffff.png"
-            alt="BuyMeNot White Loop Runner"
+            src={selectedColor.imageUrl}
+            alt={`BuyMeNot ${selectedColor.label} Loop Runner`}
           />
         </section>
 
         <section className="infoPanel">
+          <a
+            className="backLink"
+            href={getCategoryHref()}
+            onClick={postNavigationStart}
+          >
+            Back to product category
+          </a>
           <p className="eyebrow">BuyMeNot / Product Detail</p>
           <h1>{productName}</h1>
           <p className="subtitle">Minimal everyday sneaker for city use.</p>
@@ -147,9 +193,25 @@ const AppContent = () => {
           </div>
 
           <div className="chips">
-            <span className="chip active">White</span>
-            <span className="chip">Graphite</span>
-            <span className="chip">Vivid Green</span>
+            {COLOR_OPTIONS.map((option) => (
+              <button
+                key={option.code}
+                type="button"
+                className={`chip ${
+                  option.code === selectedColorCode ? "active" : ""
+                }`}
+                style={{ ["--swatch-color" as string]: `#${option.code}` }}
+                onClick={() => {
+                  setSelectedColorCode(option.code);
+                  setLastUpdate(
+                    `Reactive color selection at ${new Date().toLocaleTimeString()}`
+                  );
+                }}
+              >
+                <span className="chipSwatch" aria-hidden="true" />
+                {option.label}
+              </button>
+            ))}
           </div>
 
           <div className="metaGrid">
@@ -158,8 +220,8 @@ const AppContent = () => {
               <strong>RR7-WHT-0065</strong>
             </div>
             <div>
-              <span>Status</span>
-              <strong>In stock</strong>
+              <span>Color</span>
+              <strong>{selectedColor.label}</strong>
             </div>
             <div>
               <span>Routing</span>
