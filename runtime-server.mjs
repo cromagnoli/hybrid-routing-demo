@@ -87,10 +87,18 @@ const ensureViteServer = async () => {
     return viteServer;
   }
 
+  const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? "")
+      .split(",")
+      .map((h) => h.trim())
+      .filter(Boolean);
+
   viteServer = await createVite({
     root: NEXTGEN_ROOT,
     appType: "custom",
-    server: { middlewareMode: true },
+    server: {
+      middlewareMode: true,
+      allowedHosts: allowedHosts.length ? allowedHosts : true,
+    },
     plugins: [reactPlugin()],
   });
 
