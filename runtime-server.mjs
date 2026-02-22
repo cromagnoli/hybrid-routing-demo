@@ -11,6 +11,9 @@ const SERVER_PORT = Number(process.env.PORT ?? process.env.HAPI_RUNTIME_PORT ?? 
 const SERVER_HOST = process.env.HOST ?? "0.0.0.0";
 const NEXTGEN_ROOT = path.resolve(__dirname, "nextgen-app");
 
+const FRAME_ANCESTOR_ORIGIN = process.env.FRAME_ANCESTOR_ORIGIN ?? "https://cromagnoli.github.io";
+const FRAME_ANCESTORS = `'self' ${FRAME_ANCESTOR_ORIGIN}`;
+
 let hapiServer;
 let viteServer;
 
@@ -131,7 +134,11 @@ const serveNextGen = async (request, h) => {
   const rawTemplate = await readFile(templatePath, "utf8");
   const html = await vite.transformIndexHtml(request.path, rawTemplate);
 
-  return h.response(html).type("text/html");
+  return h
+    .response(html)
+    .type("text/html")
+    .header("Content-Security-Policy", `frame-ancestors ${FRAME_ANCESTORS}`)
+    .header("X-Frame-Options", null);
 };
 
 const start = async () => {
@@ -144,6 +151,7 @@ const start = async () => {
       cors: { origin: ["*"] },
       security: {
         hsts: false,
+        xframe: false
       },
     },
   });
@@ -187,7 +195,12 @@ const start = async () => {
         imtId: context.imtId,
         reason: evaluation.reason,
       });
-      return h.response(renderLegacyPage(context, evaluation)).type("text/html");
+
+      return h
+        .response(renderLegacyPage(context, evaluation))
+        .type("text/html")
+        .header("Content-Security-Policy", `frame-ancestors ${FRAME_ANCESTORS}`)
+        .header("X-Frame-Options", null);
     },
   });
 
