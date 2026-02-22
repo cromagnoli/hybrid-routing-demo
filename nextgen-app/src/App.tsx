@@ -1,84 +1,185 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
-const formFields = [
-  { label: "Listing title", value: "BuyMeNot Horizon" },
-  { label: "Variant ID", value: "RR7-01-EXP" },
-  { label: "Status", value: "Editable" },
-  { label: "Review state", value: "Pending approval" },
-];
+type BootstrapContext = {
+  productName?: string;
+  simulateFailure?: boolean;
+};
 
-const ListingForm = () => (
-  <section className="panel">
-    <h1>NextGen Listing Editor</h1>
-    <p className="muted">Powered by React Router 7 style runtime through Vite middlewareMode.</p>
-    <div className="field-grid">
-      {formFields.map((field) => (
-        <div key={field.label} className="field">
-          <span>{field.label}</span>
-          <strong>{field.value}</strong>
-        </div>
-      ))}
+declare global {
+  interface Window {
+    __PDP_CONTEXT__?: BootstrapContext;
+  }
+}
+
+const DEFAULT_PRODUCT_NAME = "White Loop Runner";
+
+const getBootstrap = (): BootstrapContext => window.__PDP_CONTEXT__ ?? {};
+
+const getInitialProductName = () => {
+  const raw = getBootstrap().productName;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : DEFAULT_PRODUCT_NAME;
+};
+
+const getShouldSimulateFailure = () => getBootstrap().simulateFailure === true;
+
+const postHtmlSnapshot = () => {
+  try {
+    const html = document.documentElement.outerHTML;
+    window.parent.postMessage(
+      {
+        type: "IFRAME_HTML_SNAPSHOT",
+        html,
+      },
+      "*"
+    );
+  } catch {
+    // noop
+  }
+};
+
+const redirectToLegacyFromBoundary = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.set("legacy", "true");
+  url.searchParams.set("fallbackReason", "error-boundary");
+  url.searchParams.delete("simulateFailure");
+  window.location.assign(url.toString());
+};
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    redirectToLegacyFromBoundary();
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null;
+    }
+
+    return this.props.children;
+  }
+}
+
+const CrashTrigger = ({ shouldCrash }: { shouldCrash: boolean }) => {
+  if (shouldCrash) {
+    throw new Error("Simulated NextGen runtime error");
+  }
+  return null;
+};
+
+const BuyMeNotLogo = () => (
+  <div className="logoLockup" aria-label="BuyMeNot logo">
+    <div className="logoIso" aria-hidden="true">
+      <span className="logoB">B</span>
     </div>
-    <form className="control-form">
-      <label>
-        Title
-        <input defaultValue="BuyMeNot Horizon" />
-      </label>
-      <label>
-        Colorway
-        <input defaultValue="Graphite/White" />
-      </label>
-      <label>
-        Release date
-        <input type="date" defaultValue="2026-04-15" />
-      </label>
-      <button type="button">Save draft</button>
-    </form>
-  </section>
+    <div className="logoWordmark">
+      <span className="cap">B</span>uy<span className="cap">M</span>e<span className="cap">N</span>ot
+    </div>
+  </div>
 );
 
-const ListingStats = () => (
-  <section className="panel">
-    <h1>Listing Health</h1>
-    <div className="health-grid">
-      <div className="health-card">
-        <span>Views</span>
-        <strong>12,439</strong>
-      </div>
-      <div className="health-card">
-        <span>Favorites</span>
-        <strong>246</strong>
-      </div>
-      <div className="health-card">
-        <span>Availability</span>
-        <strong>In stock</strong>
-      </div>
+const AppContent = () => {
+  const [productName, setProductName] = useState(getInitialProductName());
+  const [lastUpdate, setLastUpdate] = useState("Loaded from server render");
+  const shouldCrash = getShouldSimulateFailure();
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; productName?: string };
+
+      if (data?.type === "REQUEST_HTML_SNAPSHOT") {
+        postHtmlSnapshot();
+        return;
+      }
+
+      if (data?.type !== "PDP_NAME_UPDATE") {
+        return;
+      }
+
+      const nextName =
+        typeof data.productName === "string" && data.productName.trim()
+          ? data.productName.trim()
+          : DEFAULT_PRODUCT_NAME;
+
+      setProductName(nextName);
+      setLastUpdate(`Reactive parent POST at ${new Date().toLocaleTimeString()}`);
+    };
+
+    window.addEventListener("message", onMessage);
+    postHtmlSnapshot();
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  useEffect(() => {
+    postHtmlSnapshot();
+  }, [productName, lastUpdate]);
+
+  return (
+    <div className="page">
+      <CrashTrigger shouldCrash={shouldCrash} />
+      <header className="header">
+        <BuyMeNotLogo />
+        <div className="badge">Modern Product Detail</div>
+      </header>
+
+      <main className="layout">
+        <section className="mediaPanel">
+          <img
+            className="shoeGraphic"
+            src="/images/sneakers-ffffff.png"
+            alt="BuyMeNot White Loop Runner"
+          />
+        </section>
+
+        <section className="infoPanel">
+          <p className="eyebrow">BuyMeNot / Product Detail</p>
+          <h1>{productName}</h1>
+          <p className="subtitle">Minimal everyday sneaker for city use.</p>
+
+          <div className="priceRow">
+            <span className="current">$118.00</span>
+            <span className="compare">$138.00</span>
+          </div>
+
+          <div className="chips">
+            <span className="chip active">White</span>
+            <span className="chip">Graphite</span>
+            <span className="chip">Vivid Green</span>
+          </div>
+
+          <div className="metaGrid">
+            <div>
+              <span>SKU</span>
+              <strong>RR7-WHT-0065</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong>In stock</strong>
+            </div>
+            <div>
+              <span>Routing</span>
+              <strong>React Runtime</strong>
+            </div>
+            <div>
+              <span>Update Mode</span>
+              <strong>{lastUpdate}</strong>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
-    <button className="link-button">Launch preview</button>
-  </section>
-);
+  );
+};
 
 const App = () => (
-  <>
-    <header className="app-header">
-      <div>
-        <span className="brand">BuyMeNot</span>
-        <span className="subbrand">NextGen Listing</span>
-      </div>
-      <nav>
-        <a href="#editor">Editor</a>
-        <a href="#stats">Stats</a>
-      </nav>
-    </header>
-    <main className="app-shell">
-      <div id="editor">
-        <ListingForm />
-      </div>
-      <div id="stats">
-        <ListingStats />
-      </div>
-    </main>
-  </>
+  <ErrorBoundary>
+    <AppContent />
+  </ErrorBoundary>
 );
 
 export default App;

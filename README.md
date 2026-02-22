@@ -4,7 +4,7 @@ Standalone Node server to demo progressive rollout between legacy routing and Ne
 
 ## What it does
 
-- Exposes `/listings/{site}/{imtId}/`.
+- Exposes `/pdp/{productCategory}/{productName}/{productId}/`.
 - Decides between NextGen and legacy based on query flags.
 - NextGen is served through `vite` in `middlewareMode`.
 - Legacy is plain HTML served by Hapi.
@@ -26,7 +26,7 @@ Server defaults to `http://localhost:4001`.
 
 Example:
 
-`http://localhost:4001/listings/demo-site/imt-8712/?routingMode=nextgen&simulateFailure=false&legacy=false`
+`http://localhost:4001/pdp/running-sneakers/white-loop-runner/prod1234/`
 
 ## Render deployment
 
