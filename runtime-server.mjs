@@ -11,8 +11,7 @@ const SERVER_PORT = Number(process.env.PORT ?? process.env.HAPI_RUNTIME_PORT ?? 
 const SERVER_HOST = process.env.HOST ?? "0.0.0.0";
 const NEXTGEN_ROOT = path.resolve(__dirname, "nextgen-app");
 
-const FRAME_ANCESTOR_ORIGIN = process.env.FRAME_ANCESTOR_ORIGIN ?? "https://cromagnoli.github.io";
-const FRAME_ANCESTORS = `'self' ${FRAME_ANCESTOR_ORIGIN}`;
+const FRAME_ANCESTORS = process.env.FRAME_ANCESTORS ?? "'self' https://cromagnoli.github.io http://localhost:3000 http://127.0.0.1:3000";
 
 let hapiServer;
 let viteServer;
