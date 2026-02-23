@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
-import { useLoaderData } from "react-router";
+import { isRouteErrorResponse, useLoaderData, useRouteError } from "react-router";
 
 const DEFAULT_PRODUCT_NAME = "White Loop Runner";
 const DEFAULT_COLOR_CODE = "ffffff";
@@ -163,6 +163,59 @@ function BuyMeNotLogo() {
         <span className="cap">B</span>uy<span className="cap">M</span>e
         <span className="cap">N</span>ot
       </div>
+    </div>
+  );
+}
+
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  const status = isRouteErrorResponse(error) ? error.status : 500;
+  const message =
+    isRouteErrorResponse(error)
+      ? error.statusText || "Unexpected route failure"
+      : error instanceof Error
+        ? error.message
+        : "Unexpected route failure";
+
+  const safePath = "/cdp/running-sneakers/white-loop-runner/prod1234/";
+
+  return (
+    <div className="page">
+      <header className="header">
+        <BuyMeNotLogo />
+        <div className="badge">Runtime Error Fallback</div>
+      </header>
+
+      <main className="layout">
+        <section className="mediaPanel">
+          <div style={{ textAlign: "center", color: "#4b5563" }}>
+            <p style={{ margin: 0, fontSize: 13 }}>HTTP {status}</p>
+            <p style={{ margin: "6px 0 0", fontSize: 12 }}>Modern runtime unavailable</p>
+          </div>
+        </section>
+
+        <section className="infoPanel">
+          <p className="eyebrow">BuyMeNot / Safe fallback</p>
+          <h1>Ups! Something went wrong!</h1>
+          <p className="subtitle">Try reloading this page or navigate to Category Page.</p>
+          <p className="subtitle" style={{ marginTop: 8 }}>{message}</p>
+
+          <div className="chips" style={{ marginTop: 10 }}>
+            <button
+              type="button"
+              className="chip active"
+              onClick={() => window.location.reload()}
+            >
+              Reload page
+            </button>
+            <a className="chip" href={safePath}>
+              Go to Category Page
+            </a>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
