@@ -107,7 +107,6 @@ const redirectToLegacyFromBoundary = () => {
   const url = new URL(window.location.href);
   url.searchParams.set("legacy", "true");
   url.searchParams.set("fallbackReason", "error-boundary");
-  url.searchParams.delete("simulateFailure");
   window.location.assign(url.toString());
 };
 

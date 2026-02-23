@@ -18,6 +18,9 @@ const pdp = {
     handler: (request, h) => {
       const context = parseContext(request);
       const evaluation = evaluateRouting(context);
+      if (request.query?.fallbackReason === "error-boundary") {
+        setRoutingState(context.productId, { simulateFailure: false });
+      }
       appendRoutingEvent({
         context,
         evaluation,
