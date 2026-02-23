@@ -1,6 +1,6 @@
 import {
   parseContext,
-  evaluateRouting,
+  evaluateRoutingForDemo,
   appendRoutingEvent,
   getStoredProductName,
   setStoredProductName,
@@ -17,7 +17,7 @@ const pdp = {
   getLegacy: {
     handler: (request, h) => {
       const context = parseContext(request);
-      const evaluation = evaluateRouting(context);
+      const evaluation = evaluateRoutingForDemo(context);
       if (request.query?.fallbackReason === "error-boundary") {
         setRoutingState(context.productId, { simulateFailure: false });
       }
@@ -40,7 +40,7 @@ const pdp = {
   post: {
     handler: async (request, h) => {
       const context = parseContext(request);
-      const evaluation = evaluateRouting(context);
+      const evaluation = evaluateRoutingForDemo(context);
       appendRoutingEvent({
         context,
         evaluation,

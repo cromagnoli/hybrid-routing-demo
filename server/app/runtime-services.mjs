@@ -48,7 +48,7 @@ const sanitizeProductName = (value) => {
   return trimmed.slice(0, 80);
 };
 
-const evaluateRouting = ({ productId, routingMode, legacyQuery }) => {
+const evaluateRoutingForDemo = ({ productId, routingMode, legacyQuery }) => {
   const evaluation = {
     route: "nextgen",
     reason: "nextgen-active",
@@ -565,7 +565,7 @@ export {
   stopRuntime,
   routingEvents,
   parseContext,
-  evaluateRouting,
+  evaluateRoutingForDemo,
   getStoredProductName,
   setStoredProductName,
   resolvePostedProductName,

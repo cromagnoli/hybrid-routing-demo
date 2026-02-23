@@ -1,4 +1,4 @@
-import { parseContext, evaluateRouting } from "../runtime-services.mjs";
+import { parseContext, evaluateRoutingForDemo } from "../runtime-services.mjs";
 import { createRequestHandler } from "./react-router-request-response.adapter.mjs";
 import { getViteBuild } from "./vite.mjs";
 import { DualPaths, InternalPaths } from "./paths.mjs";
@@ -28,6 +28,20 @@ const internalPaths = Object.values(InternalPaths);
 
 const reactRouterAvailablePaths = {
   ...DualPaths,
+};
+
+// In production this route allowlist is sourced from feature-flag metadata.
+// The demo keeps it local and explicit for clarity.
+const NEXTGEN_ENABLED_ROUTES = ["ProductDetail"];
+
+const isNextGenRoutingEnabled = (context) => {
+  const evaluation = evaluateRoutingForDemo(context);
+
+  return (
+    evaluation.route === "nextgen" &&
+    !evaluation.fallback &&
+    !evaluation.queryLegacy
+  );
 };
 
 /**
@@ -70,7 +84,7 @@ const findMatchingRouteKey = (pathSegments) => {
  * @param nextGenEnabledPages - Array of route keys that are enabled for React Router
  * @returns true if the path should be handled by React Router, false otherwise
  */
-const canRouteViaNextGen = (reqPath, nextGenEnabledPages = []) => {
+const isNextGenPathAvailable = (reqPath, nextGenEnabledPages = []) => {
   if (reqPath?.endsWith(CLIENT_NAVIGATION_PATH_SUFFIX) || internalPaths.includes(reqPath)) {
     return true;
   }
@@ -137,15 +151,9 @@ const shouldUseNextGenRouter = (request) => {
   }
 
   const context = parseContext(request);
-  const evaluation = evaluateRouting(context);
-  const isNextGenEnabled =
-    evaluation.route === "nextgen" &&
-    !evaluation.fallback &&
-    !evaluation.queryLegacy;
-  const nextGenEnabledPages = ["ProductDetail"] || [];
-  const isPathAvailable = canRouteViaNextGen(request.path, nextGenEnabledPages);
+  const isPathAvailable = isNextGenPathAvailable(request.path, NEXTGEN_ENABLED_ROUTES);
 
-  return isNextGenEnabled && isPathAvailable;
+  return isNextGenRoutingEnabled(context) && isPathAvailable;
 };
 
 const createReactRouterRoutesHandler = async (request) => {

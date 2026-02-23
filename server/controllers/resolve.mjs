@@ -1,6 +1,6 @@
 import {
   parseContext,
-  evaluateRouting,
+  evaluateRoutingForDemo,
   getStoredProductName,
 } from "../app/runtime-services.mjs";
 
@@ -9,7 +9,7 @@ const resolve = {
     const context = parseContext(request);
     return h
       .response({
-        ...evaluateRouting(context),
+        ...evaluateRoutingForDemo(context),
         productName: getStoredProductName(context.productId),
         selectedColorCode: context.selectedColorCode,
         routingMode: context.routingMode,
