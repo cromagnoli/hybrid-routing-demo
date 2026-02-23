@@ -512,6 +512,15 @@ const withFrameHeaders = (response) =>
     .header("Content-Security-Policy", `frame-ancestors ${FRAME_ANCESTORS}`)
     .header("X-Frame-Options", null);
 
+const shouldBypassViteOnRequest = (request) => {
+  const path = request?.path ?? "";
+  return (
+    path === "/health" ||
+    path.startsWith("/routing-events") ||
+    path.startsWith("/resolve/")
+  );
+};
+
 const startRuntime = async (registerRoutes) => {
   hapiServer = Hapi.server({
     host: SERVER_HOST,
@@ -529,9 +538,12 @@ const startRuntime = async (registerRoutes) => {
     /**
      * Register Vite middleware directly (onRequest) to avoid catch-all route conflicts.
      */
-    hapiServer.ext("onRequest", async (request, handler) =>
-      registerViteDevMiddlewares({ hapiRequest: request, hapiHandler: handler })
-    );
+    hapiServer.ext("onRequest", async (request, handler) => {
+      if (shouldBypassViteOnRequest(request)) {
+        return handler.continue;
+      }
+      return registerViteDevMiddlewares({ hapiRequest: request, hapiHandler: handler });
+    });
   }
 
   registerRoutes(hapiServer);
