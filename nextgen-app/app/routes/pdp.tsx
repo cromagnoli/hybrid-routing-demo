@@ -38,15 +38,14 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 
   const productCategory = params.productCategory ?? "running-sneakers";
   const productName = params.productName ?? "white-loop-runner";
-  const categoryUrl = new URL(
-    `/cdp/${productCategory}/${productName}/${productId}/`,
-    requestUrl.origin
-  );
-  const checkoutUrl = new URL(`/checkout/${productId}/`, requestUrl.origin);
+  const categoryPath = `/cdp/${productCategory}/${productName}/${productId}/`;
+  const checkoutPath = `/checkout/${productId}/`;
+  const categoryParams = new URLSearchParams();
+  const checkoutParams = new URLSearchParams();
   const demoSessionId = requestUrl.searchParams.get("demoSessionId");
   if (demoSessionId) {
-    categoryUrl.searchParams.set("demoSessionId", demoSessionId);
-    checkoutUrl.searchParams.set("demoSessionId", demoSessionId);
+    categoryParams.set("demoSessionId", demoSessionId);
+    checkoutParams.set("demoSessionId", demoSessionId);
   }
 
   const response = await fetch(resolveUrl.toString());
@@ -67,8 +66,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
         : DEFAULT_PRODUCT_NAME,
     selectedColorCode: resolveSelectedColorCode(payload.selectedColorCode),
     simulateFailure: payload.simulateFailure === true,
-    categoryHref: categoryUrl.toString(),
-    checkoutHref: checkoutUrl.toString(),
+    categoryHref: categoryParams.toString()
+      ? `${categoryPath}?${categoryParams.toString()}`
+      : categoryPath,
+    checkoutHref: checkoutParams.toString()
+      ? `${checkoutPath}?${checkoutParams.toString()}`
+      : checkoutPath,
   } satisfies LoaderData;
 };
 
