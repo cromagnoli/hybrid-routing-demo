@@ -85,6 +85,18 @@ const getCategoryHref = () => {
   return target.toString();
 };
 
+const getCheckoutHref = () => {
+  const url = new URL(window.location.href);
+  const segments = url.pathname.split("/").filter(Boolean);
+  const productId = segments[3] ?? "prod1234";
+  const target = new URL(`${url.origin}/checkout/${productId}/`);
+  const demoSessionId = url.searchParams.get("demoSessionId");
+  if (demoSessionId) {
+    target.searchParams.set("demoSessionId", demoSessionId);
+  }
+  return target.toString();
+};
+
 const redirectToLegacyFromBoundary = () => {
   const url = new URL(window.location.href);
   url.searchParams.set("legacy", "true");
@@ -191,6 +203,9 @@ const AppContent = () => {
             <span className="current">$118.00</span>
             <span className="compare">$138.00</span>
           </div>
+          <a className="buyNowButton" href={getCheckoutHref()} onClick={postNavigationStart}>
+            Buy now
+          </a>
 
           <div className="chips">
             {COLOR_OPTIONS.map((option) => (

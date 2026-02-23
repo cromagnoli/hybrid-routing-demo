@@ -1,0 +1,55 @@
+body {
+  margin: 0;
+  background: #041e35;
+  color: #f6f1c7;
+  font-family: "Verdana", "Tahoma", sans-serif;
+}
+
+.page {
+  max-width: 760px;
+  border: 3px ridge #95b0d7;
+  background: #13355d;
+  box-shadow: 0 0 0 4px #0b2440;
+}
+
+.topbar {
+  background: linear-gradient(90deg, #264f86, #1b3562);
+  border-bottom: 2px solid #8da8cf;
+  padding: 8px 12px;
+}
+
+.title {
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.content {
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.checkout-box {
+  border: 1px solid #8ca6cb;
+  background: #0f2f55;
+  padding: 10px;
+}
+
+.cta {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #07203b;
+  text-decoration: none;
+  border: 1px solid #fff1a2;
+  background: #ffe27a;
+}
+
+.back {
+  display: inline-block;
+  margin-left: 10px;
+  color: #d4e2ff;
+}

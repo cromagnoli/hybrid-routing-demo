@@ -292,6 +292,9 @@ const LEGACY_SNAPSHOT_SCRIPT = `
 const renderLegacyPage = (context, evaluation) => {
   const safeProductName = escapeHtml(context.productName);
   const safeSessionId = encodeURIComponent(context.demoSessionId ?? "session-unknown");
+  const checkoutHref = `/checkout/${encodeURIComponent(
+    context.productId
+  )}/?demoSessionId=${safeSessionId}`;
   const selectedColorCode =
     resolveColorCodeInput(context.selectedColorCode) ?? DEFAULT_COLOR_CODE;
   const colorMeta = {
@@ -325,173 +328,7 @@ const renderLegacyPage = (context, evaluation) => {
   <head>
     <meta charset="utf-8" />
     <title>BuyMeNot Sneaker Detail (Legacy)</title>
-    <style>
-      body {
-        margin: 0;
-        background: #021a2f;
-        color: #f6f1c7;
-        font-family: "Verdana", "Tahoma", sans-serif;
-      }
-      .page {
-        max-width: 980px;
-        border: 3px ridge #95b0d7;
-        background: #13355d;
-        box-shadow: 0 0 0 4px #0b2440;
-      }
-      .topbar {
-        background: linear-gradient(90deg, #264f86, #1b3562);
-        border-bottom: 2px solid #8da8cf;
-        padding: 8px 12px;
-      }
-      .logo-wrap {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .iso {
-        width: 26px;
-        height: 26px;
-        border: 1px solid #b8cbe8;
-        background: #102a4a;
-        font-size: 16px;
-        line-height: 26px;
-        text-align: center;
-        color: #e9f0ff;
-        font-weight: bold;
-      }
-      .wordmark {
-        color: #ffffff;
-        letter-spacing: 0.08em;
-        font-weight: bold;
-        font-size: 13px;
-      }
-      .wordmark .cap {
-        font-size: 1.25em;
-      }
-      .variant {
-        float: right;
-        color: #d4e2ff;
-        font-size: 11px;
-        margin-top: 7px;
-      }
-      .content {
-        padding: 12px;
-      }
-      table {
-        border-collapse: collapse;
-        background: #0f2f55;
-      }
-      td {
-        border: 1px solid #5e7cab;
-        vertical-align: top;
-        padding: 10px;
-      }
-      .left {
-        width: 56%;
-        background: #0d2a4b;
-      }
-      .right {
-        width: 44%;
-        background: #112f52;
-      }
-      .legacy-shoe {
-        height: 260px;
-        border: 1px dashed #9ab2d8;
-        background: #ffffff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .legacy-shoe img {
-        width: 100%;
-        max-height: 240px;
-        object-fit: contain;
-        display: block;
-      }
-      .back-link {
-        display: inline-block;
-        margin: 0 0 10px;
-        padding: 6px 10px;
-        color: #fff3af;
-        font-size: 12px;
-        font-weight: bold;
-        text-decoration: none;
-        border: 1px solid #9ab2d8;
-        background: #0f2f55;
-        animation: legacy-blink 1s steps(1, end) infinite;
-      }
-      .title {
-        margin: 0 0 6px;
-        font-size: 25px;
-        color: #ffffff;
-      }
-      .subtitle {
-        margin: 0 0 12px;
-        color: #d4e2ff;
-        font-size: 12px;
-      }
-      .color-form {
-        margin: 10px 0 12px;
-      }
-      .color-form-label {
-        margin-bottom: 6px;
-        font-size: 12px;
-        color: #d4e2ff;
-      }
-      .color-grid {
-        display: flex;
-        gap: 8px;
-      }
-      .color-btn-link {
-        width: 28px;
-        height: 28px;
-        border: 1px solid #6e8bbb;
-        background: #0f2f55;
-        padding: 2px;
-        display: inline-block;
-        text-decoration: none;
-      }
-      .color-btn-link span {
-        display: block;
-        width: 100%;
-        height: 100%;
-      }
-      .color-btn-link.active {
-        border-color: #fff3af;
-        box-shadow: 0 0 0 1px #fff3af inset;
-      }
-      .price {
-        color: #fff3af;
-        font-size: 30px;
-        font-weight: bold;
-      }
-      .old {
-        color: #b8c3d8;
-        text-decoration: line-through;
-        font-size: 14px;
-        margin-left: 8px;
-      }
-      .meta {
-        margin-top: 12px;
-        font-size: 12px;
-        line-height: 1.55;
-        color: #e6efff;
-      }
-      .status {
-        margin-top: 10px;
-        padding: 8px;
-        border: 1px solid #88a4cf;
-        background: #123861;
-        color: #f7fbff;
-        font-size: 12px;
-      }
-      .blink {
-        animation: legacy-blink 1s steps(1, end) infinite;
-      }
-      @keyframes legacy-blink {
-        50% { opacity: 0.15; }
-      }
-    </style>
+    <link rel="stylesheet" href="/legacy-pdp.css" />
   </head>
   <body>
     <div class="page">
@@ -520,6 +357,7 @@ const renderLegacyPage = (context, evaluation) => {
                 <div class="color-form-label">Color (full page reload via querystring)</div>
                 <div class="color-grid">${colorLinks}</div>
               </div>
+              <a class="buy-now" href="${checkoutHref}">Buy now</a>
               <div class="meta">
                 SKU: LEG-WHT-0065<br/>
                 Size: 6.5 US<br/>
@@ -536,6 +374,58 @@ const renderLegacyPage = (context, evaluation) => {
             </td>
           </tr>
         </table>
+      </div>
+    </div>
+${LEGACY_SNAPSHOT_SCRIPT}
+  </body>
+</html>
+`;
+};
+
+const renderLegacyCheckoutPage = ({
+  productId,
+  productName,
+  demoSessionId,
+  simulateFailure,
+}) => {
+  const safeProductId = escapeHtml(productId);
+  const safeProductName = escapeHtml(productName);
+  const safeSessionId = encodeURIComponent(demoSessionId ?? "session-unknown");
+  const backQuery = new URLSearchParams({
+    demoSessionId: String(demoSessionId ?? "session-unknown"),
+  });
+  if (simulateFailure) {
+    backQuery.set("simulateFailure", "true");
+  }
+  const backHref = `/pdp/running-sneakers/white-loop-runner/${encodeURIComponent(
+    productId
+  )}/?${backQuery.toString()}`;
+  const backToCategoryHref = `/cdp/running-sneakers/white-loop-runner/${encodeURIComponent(
+    productId
+  )}/?demoSessionId=${safeSessionId}`;
+
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BuyMeNot Checkout (Legacy)</title>
+    <link rel="stylesheet" href="/legacy-checkout.css" />
+  </head>
+  <body>
+    <div class="page">
+      <div class="topbar">
+        <span class="title">Legacy Checkout</span>
+      </div>
+      <div class="content">
+        <div class="checkout-box">
+          <div><strong>Product:</strong> ${safeProductName}</div>
+          <div><strong>Product ID:</strong> ${safeProductId}</div>
+          <div><strong>Flow:</strong> legacy → (nextgen/legacy) → legacy</div>
+          <a class="cta" href="#" onclick="alert('Fake order placed!'); return false;">Place order</a>
+          <a class="back" href="${backHref}">Back to product detail</a>
+          <a class="back" href="${backToCategoryHref}">Back to category</a>
+        </div>
       </div>
     </div>
 ${LEGACY_SNAPSHOT_SCRIPT}
@@ -574,161 +464,7 @@ const renderLegacyCategoryPage = ({
   <head>
     <meta charset="utf-8" />
     <title>BuyMeNot Legacy Category</title>
-    <style>
-      body {
-        margin: 0;
-        background: #041e35;
-        color: #f6f1c7;
-        font-family: "Verdana", "Tahoma", sans-serif;
-      }
-      .page {
-        max-width: 980px;
-        border: 3px ridge #95b0d7;
-        background: #13355d;
-        box-shadow: 0 0 0 4px #0b2440;
-      }
-      .topbar {
-        background: linear-gradient(90deg, #264f86, #1b3562);
-        border-bottom: 2px solid #8da8cf;
-        padding: 8px 12px;
-      }
-      .logo-wrap {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .iso {
-        width: 26px;
-        height: 26px;
-        border: 1px solid #b8cbe8;
-        background: #102a4a;
-        font-size: 16px;
-        line-height: 26px;
-        text-align: center;
-        color: #e9f0ff;
-        font-weight: bold;
-      }
-      .wordmark {
-        color: #ffffff;
-        letter-spacing: 0.08em;
-        font-weight: bold;
-        font-size: 13px;
-      }
-      .wordmark .cap {
-        font-size: 1.25em;
-      }
-      .variant {
-        float: right;
-        color: #d4e2ff;
-        font-size: 11px;
-        margin-top: 7px;
-      }
-      .content {
-        padding: 16px;
-      }
-      .section-title {
-        margin: 0 0 10px;
-        color: #ffffff;
-        font-size: 18px;
-      }
-      .section-subtitle {
-        margin: 0 0 14px;
-        color: #d4e2ff;
-        font-size: 12px;
-      }
-      .section-subtitle.blink {
-        animation: legacy-blink 1s steps(1, end) infinite;
-      }
-      .blink {
-        animation: legacy-blink 1s steps(1, end) infinite;
-      }
-      @keyframes legacy-blink {
-        50% { opacity: 0.15; }
-      }
-      .tiles {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-      }
-      .card-link {
-        display: block;
-        width: 240px;
-        flex: 0 0 240px;
-        box-sizing: border-box;
-        text-decoration: none;
-      }
-      .card {
-        width: 100%;
-        box-sizing: border-box;
-        border: 1px solid #7f9dcc;
-        background: #0d2a4b;
-        padding: 10px;
-      }
-      .card-link:hover .card {
-        border-color: #a9bde0;
-      }
-      .card-muted {
-        width: 240px;
-        flex: 0 0 240px;
-        box-sizing: border-box;
-        border: 1px solid #5f7499;
-        background: #19365c;
-        padding: 10px;
-        opacity: 0.45;
-        filter: grayscale(0.8);
-      }
-      .thumb {
-        width: 100%;
-        height: 190px;
-        background: #ffffff;
-        border: 1px dashed #9ab2d8;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .thumb img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        display: block;
-      }
-      .product-title {
-        margin: 10px 0 6px;
-        font-size: 16px;
-        color: #ffffff;
-      }
-      .link {
-        color: #fff3af;
-        font-size: 13px;
-        font-weight: bold;
-        text-decoration: underline;
-      }
-      .meta {
-        margin-top: 8px;
-        font-size: 11px;
-        color: #dbe7ff;
-      }
-      .notice {
-        margin-top: 14px;
-        font-size: 12px;
-        color: #f6f1c7;
-      }
-      .pager {
-        margin-top: 12px;
-        font-size: 12px;
-        color: #d4e2ff;
-      }
-      .pager span {
-        display: inline-block;
-        margin-right: 8px;
-        padding: 2px 6px;
-        border: 1px solid #7f9dcc;
-        background: #10335a;
-      }
-      .pager .active {
-        color: #fff3af;
-      }
-    </style>
+    <link rel="stylesheet" href="/legacy-category.css" />
   </head>
   <body>
     <div class="page">
@@ -987,6 +723,38 @@ const start = async () => {
       }
 
       return withFrameHeaders(h.response(renderLegacyPage(pageContext, evaluation)));
+    },
+  });
+
+  hapiServer.route({
+    method: "GET",
+    path: "/checkout/{productId}/",
+    handler: (request, h) => {
+      const context = parseContext(request);
+      const evaluation = {
+        route: "legacy",
+        reason: "legacy-checkout-final",
+        fallback: false,
+        queryLegacy: true,
+      };
+
+      appendRoutingEvent({
+        context,
+        evaluation,
+        method: request.method,
+        path: request.path,
+      });
+
+      return withFrameHeaders(
+        h.response(
+          renderLegacyCheckoutPage({
+            productId: context.productId,
+            productName: getStoredProductName(context.productId),
+            demoSessionId: context.demoSessionId,
+            simulateFailure: context.simulateFailure,
+          })
+        )
+      );
     },
   });
 
