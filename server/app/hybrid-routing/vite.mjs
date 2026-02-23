@@ -59,17 +59,12 @@ export const tearDownViteDevServer = async () => {
  */
 export const registerViteDevMiddlewares = async ({ hapiRequest, hapiHandler }) => {
   const viteDevServer = await getViteDevServer();
-  const rawRes = hapiRequest.raw.res;
 
   return new Promise((resolve, reject) => {
     viteDevServer.middlewares(hapiRequest.raw.req, hapiRequest.raw.res, (error) => {
       if (error) {
         reject(error);
       } else {
-        if (rawRes.writableEnded) {
-          resolve(hapiHandler.abandon);
-          return;
-        }
         resolve(hapiHandler.continue);
       }
     });
