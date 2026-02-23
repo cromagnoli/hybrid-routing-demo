@@ -138,7 +138,14 @@ class RedirectToLegacyBoundary extends React.Component<
 }
 
 function CrashTrigger({ shouldCrash }: { shouldCrash: boolean }) {
-  if (shouldCrash && typeof window !== "undefined") {
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  // Avoid SSR/client hydration mismatch by crashing only after hydration.
+  if (shouldCrash && hydrated && typeof window !== "undefined") {
     throw new RouteErrorBoundary();
   }
   return null;
