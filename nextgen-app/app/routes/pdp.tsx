@@ -15,6 +15,8 @@ type LoaderData = {
   productName: string;
   selectedColorCode: string;
   simulateFailure: boolean;
+  categoryHref: string;
+  checkoutHref: string;
 };
 
 const resolveSelectedColorCode = (value: unknown) =>
@@ -32,6 +34,19 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const resolveUrl = new URL(`/resolve/${productId}`, requestUrl.origin);
   for (const [key, value] of requestUrl.searchParams.entries()) {
     resolveUrl.searchParams.set(key, value);
+  }
+
+  const productCategory = params.productCategory ?? "running-sneakers";
+  const productName = params.productName ?? "white-loop-runner";
+  const categoryUrl = new URL(
+    `/cdp/${productCategory}/${productName}/${productId}/`,
+    requestUrl.origin
+  );
+  const checkoutUrl = new URL(`/checkout/${productId}/`, requestUrl.origin);
+  const demoSessionId = requestUrl.searchParams.get("demoSessionId");
+  if (demoSessionId) {
+    categoryUrl.searchParams.set("demoSessionId", demoSessionId);
+    checkoutUrl.searchParams.set("demoSessionId", demoSessionId);
   }
 
   const response = await fetch(resolveUrl.toString());
@@ -52,6 +67,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
         : DEFAULT_PRODUCT_NAME,
     selectedColorCode: resolveSelectedColorCode(payload.selectedColorCode),
     simulateFailure: payload.simulateFailure === true,
+    categoryHref: categoryUrl.toString(),
+    checkoutHref: checkoutUrl.toString(),
   } satisfies LoaderData;
 };
 
@@ -77,48 +94,6 @@ const postNavigationStart = () => {
   } catch {
     // noop
   }
-};
-
-const getCategoryHref = () => {
-  if (typeof window === "undefined") {
-    return "/cdp/running-sneakers/white-loop-runner/prod1234/";
-  }
-
-  const url = new URL(window.location.href);
-  const segments = url.pathname.split("/").filter(Boolean);
-  if (segments.length < 4) {
-    return `/cdp/running-sneakers/white-loop-runner/prod1234/`;
-  }
-
-  const productCategory = segments[1] ?? "running-sneakers";
-  const productSlug = segments[2] ?? "white-loop-runner";
-  const productId = segments[3] ?? "prod1234";
-  const target = new URL(
-    `${url.origin}/cdp/${productCategory}/${productSlug}/${productId}/`
-  );
-
-  const demoSessionId = url.searchParams.get("demoSessionId");
-  if (demoSessionId) {
-    target.searchParams.set("demoSessionId", demoSessionId);
-  }
-
-  return target.toString();
-};
-
-const getCheckoutHref = () => {
-  if (typeof window === "undefined") {
-    return "/checkout/prod1234/";
-  }
-
-  const url = new URL(window.location.href);
-  const segments = url.pathname.split("/").filter(Boolean);
-  const productId = segments[3] ?? "prod1234";
-  const target = new URL(`${url.origin}/checkout/${productId}/`);
-  const demoSessionId = url.searchParams.get("demoSessionId");
-  if (demoSessionId) {
-    target.searchParams.set("demoSessionId", demoSessionId);
-  }
-  return target.toString();
 };
 
 const redirectToLegacyFromBoundary = () => {
@@ -226,7 +201,7 @@ export default function ProductDetailRoute() {
           </section>
 
           <section className="infoPanel">
-            <a className="backLink" href={getCategoryHref()} onClick={postNavigationStart}>
+            <a className="backLink" href={data.categoryHref} onClick={postNavigationStart}>
               Back to product category
             </a>
             <p className="eyebrow">BuyMeNot / Product Detail</p>
@@ -237,7 +212,7 @@ export default function ProductDetailRoute() {
               <span className="current">$118.00</span>
               <span className="compare">$138.00</span>
             </div>
-            <a className="buyNowButton" href={getCheckoutHref()} onClick={postNavigationStart}>
+            <a className="buyNowButton" href={data.checkoutHref} onClick={postNavigationStart}>
               Buy now
             </a>
 
