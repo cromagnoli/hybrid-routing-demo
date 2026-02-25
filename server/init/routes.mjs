@@ -5,6 +5,7 @@ import fallback from "../controllers/fallback.mjs";
 import health from "../controllers/health.mjs";
 import routingEvents from "../controllers/routing-events.mjs";
 import resolve from "../controllers/resolve.mjs";
+import sessionTouch from "../controllers/session-touch.mjs";
 import * as routing from "../app/hybrid-routing/routing.mjs";
 
 const registerRoutes = (server) => {
@@ -34,6 +35,7 @@ const registerRoutes = (server) => {
     { method: "GET", path: "/health", config: health },
     { method: "GET", path: "/routing-events", config: routingEvents },
     { method: "GET", path: "/resolve/{productId}", config: resolve },
+    { method: "POST", path: "/session-touch", config: sessionTouch },
     {
       method: "POST",
       path: "/pdp/{productCategory}/{productName}/{productId}/",

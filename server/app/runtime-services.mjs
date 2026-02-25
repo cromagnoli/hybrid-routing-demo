@@ -11,14 +11,15 @@ const SERVER_HOST = process.env.HOST ?? "0.0.0.0";
 const DEFAULT_PRODUCT_NAME = "White Loop Runner";
 const DEFAULT_COLOR_CODE = "ffffff";
 const ALLOWED_COLOR_CODES = ["ffffff", "444444", "22c55e"];
+const DEMO_SESSION_TTL_MS = 60 * 60 * 1000;
+const SESSION_CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
 const FRAME_ANCESTORS =
   process.env.FRAME_ANCESTORS ??
   "'self' https://cromagnoli.github.io http://localhost:3000 http://127.0.0.1:3000";
 
 let hapiServer;
 
-const productNameByProductId = new Map();
-const routingStateByProductId = new Map();
+const demoStateBySessionId = new Map();
 
 let routingEventSeq = 0;
 const routingEvents = [];
@@ -48,6 +49,71 @@ const sanitizeProductName = (value) => {
   return trimmed.slice(0, 80);
 };
 
+const resolveDemoSessionId = (request) =>
+  typeof request.query.demoSessionId === "string" && request.query.demoSessionId
+    ? request.query.demoSessionId
+    : "session-unknown";
+
+const createDefaultDemoSessionState = (now = Date.now()) => ({
+  routingMode: "nextgen",
+  simulateFailure: false,
+  productName: DEFAULT_PRODUCT_NAME,
+  lastSeenAt: now,
+  expiresAt: now + DEMO_SESSION_TTL_MS,
+});
+
+const getOrCreateDemoSessionState = (sessionId, options = {}) => {
+  const { touch = false } = options;
+  const now = Date.now();
+  const existing = demoStateBySessionId.get(sessionId);
+
+  if (!existing || existing.expiresAt <= now) {
+    const next = createDefaultDemoSessionState(now);
+    demoStateBySessionId.set(sessionId, next);
+    return {
+      state: next,
+      expired: Boolean(existing),
+    };
+  }
+
+  if (touch) {
+    const touched = {
+      ...existing,
+      lastSeenAt: now,
+      expiresAt: now + DEMO_SESSION_TTL_MS,
+    };
+    demoStateBySessionId.set(sessionId, touched);
+    return {
+      state: touched,
+      expired: false,
+    };
+  }
+
+  return {
+    state: existing,
+    expired: false,
+  };
+};
+
+const touchDemoSession = (sessionId) => {
+  const { state, expired } = getOrCreateDemoSessionState(sessionId, { touch: true });
+  return {
+    sessionExpired: expired,
+    sessionExpiresAt: state.expiresAt,
+  };
+};
+
+const cleanupExpiredDemoSessions = () => {
+  const now = Date.now();
+  for (const [sessionId, sessionState] of demoStateBySessionId.entries()) {
+    if (sessionState.expiresAt <= now) {
+      demoStateBySessionId.delete(sessionId);
+    }
+  }
+};
+
+let demoSessionCleanupTimer = null;
+
 const evaluateRoutingForDemo = ({ productId, routingMode, legacyQuery }) => {
   const evaluation = {
     route: "nextgen",
@@ -75,25 +141,27 @@ const evaluateRoutingForDemo = ({ productId, routingMode, legacyQuery }) => {
 };
 
 const parseContext = (request) => {
+  const demoSessionId = resolveDemoSessionId(request);
+  const { state: sessionState, expired: sessionExpired } =
+    getOrCreateDemoSessionState(demoSessionId, { touch: true });
+
   const productId = String(
     request.params.productId ?? request.query.productId ?? "prod1234"
   );
-  const stored = getRoutingState(productId);
 
   const queryRoutingMode = resolveRoutingModeInput(request.query.routingMode);
   const querySimulateFailure = resolveBooleanInput(request.query.simulateFailure);
 
   return {
     productId,
-    routingMode: queryRoutingMode ?? stored.routingMode,
-    simulateFailure: querySimulateFailure ?? stored.simulateFailure,
+    routingMode: queryRoutingMode ?? sessionState.routingMode,
+    simulateFailure: querySimulateFailure ?? sessionState.simulateFailure,
     selectedColorCode:
       resolveColorCodeInput(request.query.colorCode) ?? DEFAULT_COLOR_CODE,
     legacyQuery: request.query.legacy === "true",
-    demoSessionId:
-      typeof request.query.demoSessionId === "string" && request.query.demoSessionId
-        ? request.query.demoSessionId
-        : "session-unknown",
+    demoSessionId,
+    sessionExpired,
+    sessionExpiresAt: sessionState.expiresAt,
   };
 };
 
@@ -111,11 +179,17 @@ const resolvePostedProductName = (request) => {
   return DEFAULT_PRODUCT_NAME;
 };
 
-const getStoredProductName = (productId) =>
-  productNameByProductId.get(productId) ?? DEFAULT_PRODUCT_NAME;
+const getStoredProductName = (demoSessionId) => {
+  const { state } = getOrCreateDemoSessionState(demoSessionId);
+  return state.productName;
+};
 
-const setStoredProductName = (productId, productName) => {
-  productNameByProductId.set(productId, sanitizeProductName(productName));
+const setStoredProductName = (demoSessionId, productName) => {
+  const { state } = getOrCreateDemoSessionState(demoSessionId, { touch: true });
+  demoStateBySessionId.set(demoSessionId, {
+    ...state,
+    productName: sanitizeProductName(productName),
+  });
 };
 
 const resolveColorCodeInput = (value) => {
@@ -127,23 +201,20 @@ const resolveColorCodeInput = (value) => {
   return ALLOWED_COLOR_CODES.includes(normalized) ? normalized : null;
 };
 
-const getRoutingState = (productId) => {
-  if (!routingStateByProductId.has(productId)) {
-    routingStateByProductId.set(productId, {
-      routingMode: "nextgen",
-      simulateFailure: false,
-    });
-  }
-
-  return routingStateByProductId.get(productId);
-};
-
-const setRoutingState = (productId, patch) => {
-  const current = getRoutingState(productId);
-  routingStateByProductId.set(productId, {
-    ...current,
+const setRoutingState = (demoSessionId, patch) => {
+  const { state } = getOrCreateDemoSessionState(demoSessionId, { touch: true });
+  demoStateBySessionId.set(demoSessionId, {
+    ...state,
     ...patch,
   });
+};
+
+const getDemoSessionInfo = (demoSessionId) => {
+  const { state, expired } = getOrCreateDemoSessionState(demoSessionId);
+  return {
+    sessionExpired: expired,
+    sessionExpiresAt: state.expiresAt,
+  };
 };
 
 const resolveRoutingModeInput = (value) => {
@@ -440,7 +511,7 @@ const renderLegacyCategoryPage = ({
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
   const safeCategory = escapeHtml(readableCategory || "Product Category");
-  const safeProductName = escapeHtml(getStoredProductName(productId));
+  const safeProductName = escapeHtml(getStoredProductName(demoSessionId));
   const href = `/pdp/${encodeURIComponent(productCategory)}/white-loop-runner/${encodeURIComponent(productId)}/`;
   const queryParams = new URLSearchParams();
   if (simulateFailure) {
@@ -546,6 +617,12 @@ const startRuntime = async (registerRoutes) => {
   registerRoutes(hapiServer);
 
   await hapiServer.start();
+
+  demoSessionCleanupTimer = setInterval(
+    cleanupExpiredDemoSessions,
+    SESSION_CLEANUP_INTERVAL_MS
+  );
+
   console.log(`[hybrid-demo] running on http://${SERVER_HOST}:${SERVER_PORT}`);
 };
 
@@ -554,6 +631,12 @@ const stopRuntime = async () => {
     await hapiServer.stop();
     hapiServer = undefined;
   }
+
+  if (demoSessionCleanupTimer) {
+    clearInterval(demoSessionCleanupTimer);
+    demoSessionCleanupTimer = null;
+  }
+
   await tearDownViteDevServer();
 };
 
@@ -568,6 +651,9 @@ export {
   resolvePostedProductName,
   resolveRoutingModeInput,
   setRoutingState,
+  resolveDemoSessionId,
+  touchDemoSession,
+  getDemoSessionInfo,
   resolveBooleanInput,
   sleep,
   appendRoutingEvent,

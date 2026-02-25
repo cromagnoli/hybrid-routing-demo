@@ -19,7 +19,7 @@ const pdp = {
       const context = parseContext(request);
       const evaluation = evaluateRoutingForDemo(context);
       if (request.query?.fallbackReason === "error-boundary") {
-        setRoutingState(context.productId, { simulateFailure: false });
+        setRoutingState(context.demoSessionId, { simulateFailure: false });
       }
       appendRoutingEvent({
         context,
@@ -30,7 +30,7 @@ const pdp = {
 
       const pageContext = {
         ...context,
-        productName: getStoredProductName(context.productId),
+        productName: getStoredProductName(context.demoSessionId),
         selectedColorCode: context.selectedColorCode,
       };
 
@@ -52,24 +52,24 @@ const pdp = {
 
       if (Object.prototype.hasOwnProperty.call(payload, "productName")) {
         const postedName = resolvePostedProductName(request);
-        setStoredProductName(context.productId, postedName);
+        setStoredProductName(context.demoSessionId, postedName);
       }
 
       const postedRoutingMode = resolveRoutingModeInput(payload.routingMode);
       if (postedRoutingMode) {
-        setRoutingState(context.productId, { routingMode: postedRoutingMode });
+        setRoutingState(context.demoSessionId, { routingMode: postedRoutingMode });
       }
 
       const postedSimulateFailure = resolveBooleanInput(payload.simulateFailure);
       if (postedSimulateFailure !== null) {
-        setRoutingState(context.productId, { simulateFailure: postedSimulateFailure });
+        setRoutingState(context.demoSessionId, { simulateFailure: postedSimulateFailure });
       }
 
       await sleep(650);
       return h
         .response({
           ok: true,
-          productName: getStoredProductName(context.productId),
+          productName: getStoredProductName(context.demoSessionId),
           selectedColorCode: context.selectedColorCode,
         })
         .type("application/json");

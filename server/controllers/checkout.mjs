@@ -28,7 +28,7 @@ const checkout = {
         h.response(
           renderLegacyCheckoutPage({
             productId: context.productId,
-            productName: getStoredProductName(context.productId),
+            productName: getStoredProductName(context.demoSessionId),
             demoSessionId: context.demoSessionId,
             simulateFailure: context.simulateFailure,
           })
