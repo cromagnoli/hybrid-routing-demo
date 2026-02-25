@@ -66,15 +66,13 @@ const getCategoryHref = () => {
   const url = new URL(window.location.href);
   const segments = url.pathname.split("/").filter(Boolean);
   if (segments.length < 4) {
-    return `/cdp/running-sneakers/white-loop-runner/prod1234/`;
+    return `/cdp/running-sneakers/`;
   }
 
   const productCategory = segments[1] ?? "running-sneakers";
-  const productSlug = segments[2] ?? "white-loop-runner";
-  const productId = segments[3] ?? "prod1234";
 
   const target = new URL(
-    `${url.origin}/cdp/${productCategory}/${productSlug}/${productId}/`
+    `${url.origin}/cdp/${productCategory}/`
   );
 
   const demoSessionId = url.searchParams.get("demoSessionId");
@@ -87,9 +85,7 @@ const getCategoryHref = () => {
 
 const getCheckoutHref = () => {
   const url = new URL(window.location.href);
-  const segments = url.pathname.split("/").filter(Boolean);
-  const productId = segments[3] ?? "prod1234";
-  const target = new URL(`${url.origin}/checkout/${productId}/`);
+  const target = new URL(`${url.origin}/checkout/`);
   const demoSessionId = url.searchParams.get("demoSessionId");
   if (demoSessionId) {
     target.searchParams.set("demoSessionId", demoSessionId);

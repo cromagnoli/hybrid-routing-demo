@@ -75,7 +75,9 @@ const evaluateRoutingForDemo = ({ productId, routingMode, legacyQuery }) => {
 };
 
 const parseContext = (request) => {
-  const productId = String(request.params.productId ?? "product-unknown");
+  const productId = String(
+    request.params.productId ?? request.query.productId ?? "prod1234"
+  );
   const stored = getRoutingState(productId);
 
   const queryRoutingMode = resolveRoutingModeInput(request.query.routingMode);
@@ -288,9 +290,7 @@ const LEGACY_SNAPSHOT_SCRIPT = `
 const renderLegacyPage = (context, evaluation) => {
   const safeProductName = escapeHtml(context.productName);
   const safeSessionId = encodeURIComponent(context.demoSessionId ?? "session-unknown");
-  const checkoutHref = `/checkout/${encodeURIComponent(
-    context.productId
-  )}/?demoSessionId=${safeSessionId}`;
+  const checkoutHref = `/checkout/?demoSessionId=${safeSessionId}`;
   const selectedColorCode =
     resolveColorCodeInput(context.selectedColorCode) ?? DEFAULT_COLOR_CODE;
   const colorMeta = {
@@ -342,7 +342,7 @@ const renderLegacyPage = (context, evaluation) => {
               <div class="legacy-shoe"><img src="${productImageUrl}" alt="BuyMeNot ${selectedColorName} Loop Runner"/></div>
             </td>
             <td class="right">
-              <a class="back-link" href="/cdp/running-sneakers/white-loop-runner/${encodeURIComponent(context.productId)}/?demoSessionId=${safeSessionId}">Back to product category</a>
+              <a class="back-link" href="/cdp/running-sneakers/?demoSessionId=${safeSessionId}">Back to product category</a>
               <h1 class="title">${safeProductName}</h1>
               <p class="subtitle">Classic HTML table layout for legacy storefront.</p>
               <div>
@@ -396,9 +396,7 @@ const renderLegacyCheckoutPage = ({
   const backHref = `/pdp/running-sneakers/white-loop-runner/${encodeURIComponent(
     productId
   )}/?${backQuery.toString()}`;
-  const backToCategoryHref = `/cdp/running-sneakers/white-loop-runner/${encodeURIComponent(
-    productId
-  )}/?demoSessionId=${safeSessionId}`;
+  const backToCategoryHref = `/cdp/running-sneakers/?demoSessionId=${safeSessionId}`;
 
   return `
 <!doctype html>
@@ -432,7 +430,6 @@ ${LEGACY_SNAPSHOT_SCRIPT}
 
 const renderLegacyCategoryPage = ({
   productCategory,
-  productSlug,
   productId,
   simulateFailure,
   demoSessionId,
@@ -444,7 +441,7 @@ const renderLegacyCategoryPage = ({
     .join(" ");
   const safeCategory = escapeHtml(readableCategory || "Product Category");
   const safeProductName = escapeHtml(getStoredProductName(productId));
-  const href = `/pdp/${encodeURIComponent(productCategory)}/${encodeURIComponent(productSlug)}/${encodeURIComponent(productId)}/`;
+  const href = `/pdp/${encodeURIComponent(productCategory)}/white-loop-runner/${encodeURIComponent(productId)}/`;
   const queryParams = new URLSearchParams();
   if (simulateFailure) {
     queryParams.set("simulateFailure", "true");

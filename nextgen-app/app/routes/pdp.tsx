@@ -37,9 +37,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   }
 
   const productCategory = params.productCategory ?? "running-sneakers";
-  const productName = params.productName ?? "white-loop-runner";
-  const categoryPath = `/cdp/${productCategory}/${productName}/${productId}/`;
-  const checkoutPath = `/checkout/${productId}/`;
+  const categoryPath = `/cdp/${productCategory}/`;
+  const checkoutPath = `/checkout/`;
   const categoryParams = new URLSearchParams();
   const checkoutParams = new URLSearchParams();
   const demoSessionId = requestUrl.searchParams.get("demoSessionId");
@@ -47,7 +46,6 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     categoryParams.set("demoSessionId", demoSessionId);
     checkoutParams.set("demoSessionId", demoSessionId);
   }
-
   const response = await fetch(resolveUrl.toString());
   if (!response.ok) {
     throw new Error("Failed to resolve product detail");
@@ -179,7 +177,7 @@ export function ErrorBoundary() {
         ? error.message
         : "Unexpected route failure";
 
-  const safePath = "/cdp/running-sneakers/white-loop-runner/prod1234/";
+  const safePath = "/cdp/running-sneakers/";
 
   return (
     <div className="page">

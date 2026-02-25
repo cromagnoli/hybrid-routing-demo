@@ -8,9 +8,10 @@ import {
 const cdp = {
   get: {
     handler: (request, h) => {
-      const context = parseContext(request);
+      const baseContext = parseContext(request);
+      const productId = "prod1234";
+      const context = { ...baseContext, productId };
       const productCategory = String(request.params.productCategory ?? "running-sneakers");
-      const productSlug = String(request.params.productName ?? "white-loop-runner");
       const evaluation = {
         route: "legacy",
         reason: "legacy-category-entry",
@@ -29,7 +30,6 @@ const cdp = {
         h.response(
           renderLegacyCategoryPage({
             productCategory,
-            productSlug,
             productId: context.productId,
             simulateFailure: context.simulateFailure,
             demoSessionId: context.demoSessionId,

@@ -11,7 +11,7 @@ const registerRoutes = (server) => {
   const routes = [
     {
       method: "GET",
-      path: "/cdp/{productCategory}/{productName}/{productId}/",
+      path: "/cdp/{productCategory}/",
       config: cdp.get,
     },
     {
@@ -22,7 +22,7 @@ const registerRoutes = (server) => {
         "/pdp/{productCategory}/{productName}/{productId}/"
       ),
     },
-    { method: "GET", path: "/checkout/{productId}/", config: checkout.get },
+    { method: "GET", path: "/checkout/", config: checkout.get },
     {
       method: ["GET", "POST"],
       path: "/{path*}",
