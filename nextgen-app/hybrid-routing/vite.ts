@@ -1,3 +1,6 @@
+import type { Request, ResponseToolkit } from '@hapi/hapi';
+import type { ServerBuild } from 'react-router';
+import type { ViteDevServer } from 'vite';
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,7 +14,7 @@ const NEXTGEN_ROOT = path.resolve(__dirname, "..");
 export const shouldRunViteDevServer = () => true;
 
 const createViteServer = async () => {
-  const viteModule = await import("vite");
+  const viteModule = await import('vite');
 
   const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? "")
     .split(",")
@@ -20,8 +23,8 @@ const createViteServer = async () => {
 
   return viteModule.createServer({
     root: NEXTGEN_ROOT,
-    configFile: path.resolve(NEXTGEN_ROOT, "vite.config.ts"),
-    appType: "custom",
+    configFile: path.resolve(NEXTGEN_ROOT, 'vite.config.ts'),
+    appType: 'custom',
     server: {
       middlewareMode: true,
       allowedHosts: allowedHosts.length ? allowedHosts : true,
@@ -29,7 +32,7 @@ const createViteServer = async () => {
   });
 };
 
-let vite: Awaited<ReturnType<typeof createViteServer>> | null = null;
+let vite: ViteDevServer | null = null;
 
 const viteDevServerSingleton = async () => {
   if (!vite) {
@@ -53,15 +56,15 @@ export const tearDownViteDevServer = async () => {
  */
 export const registerViteDevMiddlewares = async ({
   hapiRequest,
-  hapiHandler,
+  hapiHandler
 }: {
-  hapiRequest: import("@hapi/hapi").Request;
-  hapiHandler: import("@hapi/hapi").ResponseToolkit;
+  hapiRequest: Request;
+  hapiHandler: ResponseToolkit;
 }) => {
   const viteDevServer = await getViteDevServer();
 
   return new Promise((resolve, reject) => {
-    viteDevServer.middlewares(hapiRequest.raw.req, hapiRequest.raw.res, (error) => {
+    viteDevServer.middlewares(hapiRequest.raw.req, hapiRequest.raw.res, (error: any) => {
       if (error) {
         reject(error);
       } else {
@@ -80,7 +83,7 @@ export const getViteBuild = async () => {
   // if (shouldRunViteDevServer()) {
     const viteDevServer = await getViteDevServer();
 
-    return await viteDevServer.ssrLoadModule("virtual:react-router/server-build");
+    return (await viteDevServer.ssrLoadModule('virtual:react-router/server-build')) as ServerBuild;
   // }
 
   // const viteStaticBuild = await import('../../build/server/index.mjs');

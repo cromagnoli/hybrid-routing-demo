@@ -570,10 +570,6 @@ ${LEGACY_SNAPSHOT_SCRIPT}
 `;
 };
 
-
-const runViteMiddleware = async (request, h) =>
-  registerViteDevMiddlewares({ hapiRequest: request, hapiHandler: h });
-
 const withFrameHeaders = (response) =>
   response
     .type("text/html")
@@ -604,15 +600,34 @@ const startRuntime = async (registerRoutes) => {
 
   if (shouldRunViteDevServer()) {
     /**
-     * Register Vite middleware directly (onRequest) to avoid catch-all route conflicts.
+     * Register Vite middleware directly instead of using `Hecks.toPlugin(viteDevServer.middlewares, 'viteDevServer')`
+     * avoiding catch-all duplicate route issues like:
+     * "Error: New route /{expressPath*} conflicts with existing /{any*} at..."
      */
-    hapiServer.ext("onRequest", async (request, handler) => {
+    hapiServer.ext('onRequest', async (request, handler) => {
       if (shouldBypassViteOnRequest(request)) {
         return handler.continue;
       }
+
       return registerViteDevMiddlewares({ hapiRequest: request, hapiHandler: handler });
     });
   }
+  /**
+   * Kept intentionally commented to preserve the original production branching shape.
+   * This demo runs exclusively on Vite dev middleware (no static build artifact pipeline),
+   * so we force the dev path while leaving the static branch as reference for docs parity.
+   */
+  // else {
+  //   hapiServer.route({
+  //     method: 'GET',
+  //     path: '/nextgen-assets/{param*}', // Needs to match assets config at vite.config.mts
+  //     handler: {
+  //       directory: {
+  //         path: './build/client/nextgen-assets' // Needs to match assets directory structure at build/client
+  //       }
+  //     }
+  //   });
+  // }
 
   registerRoutes(hapiServer);
 
@@ -661,7 +676,5 @@ export {
   withFrameHeaders,
   renderLegacyPage,
   renderLegacyCheckoutPage,
-  runViteMiddleware,
-  registerViteDevMiddlewares,
-  shouldRunViteDevServer,
+  shouldRunViteDevServer
 };

@@ -6,6 +6,3 @@ export enum DualPaths {
 export enum InternalPaths {
   ReactRouterManifest = "/__manifest",
 }
-
-export const toReactRouterFileRoutePath = (path: string) =>
-  path.startsWith("/") ? path.slice(1) : path;
