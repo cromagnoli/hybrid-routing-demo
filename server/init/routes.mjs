@@ -6,7 +6,7 @@ import health from "../controllers/health.mjs";
 import routingEvents from "../controllers/routing-events.mjs";
 import resolve from "../controllers/resolve.mjs";
 import sessionTouch from "../controllers/session-touch.mjs";
-import * as routing from "../app/hybrid-routing/routing.mjs";
+import * as routing from "../../nextgen-app/hybrid-routing/routing.js";
 
 const registerRoutes = (server) => {
   const routes = [
@@ -43,17 +43,11 @@ const registerRoutes = (server) => {
     },
   ];
 
-  const hapiRoutes = [...routes, ...demoUtilityRoutes].map((route) => {
-    const { handler, ...restConfig } = route.config;
-    return {
-      method: route.method,
-      path: route.path,
-      options: {
-        ...restConfig,
-        handler,
-      },
-    };
-  });
+  const hapiRoutes = [...routes, ...demoUtilityRoutes].map((route) => ({
+    method: route.method,
+    path: route.path,
+    handler: route.config.handler,
+  }));
 
   server.route(hapiRoutes);
 };

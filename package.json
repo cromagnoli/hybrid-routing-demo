@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node runtime-server.mjs",
-    "dev": "node runtime-server.mjs"
+    "build:shared-ts": "node scripts/build-shared-ts.mjs",
+    "prestart": "npm run build:shared-ts",
+    "start": "node demo-runtime-server.mjs"
   },
   "dependencies": {
     "@react-router/dev": "^7.13.0",

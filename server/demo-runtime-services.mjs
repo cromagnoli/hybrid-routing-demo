@@ -3,7 +3,7 @@ import {
   shouldRunViteDevServer,
   registerViteDevMiddlewares,
   tearDownViteDevServer,
-} from "./hybrid-routing/vite.mjs";
+} from "../nextgen-app/hybrid-routing/vite.js";
 
 const SERVER_PORT = Number(process.env.PORT ?? process.env.HAPI_RUNTIME_PORT ?? "4001");
 const SERVER_HOST = process.env.HOST ?? "0.0.0.0";

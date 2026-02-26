@@ -7,7 +7,7 @@ import {
   ScrollRestoration,
 } from "react-router";
 
-import stylesHref from "../src/styles.css?url";
+import stylesHref from "./src/styles.css?url";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesHref },

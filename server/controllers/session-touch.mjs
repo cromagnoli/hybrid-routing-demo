@@ -1,7 +1,7 @@
 import {
   resolveDemoSessionId,
   touchDemoSession,
-} from "../app/runtime-services.mjs";
+} from "../demo-runtime-services.mjs";
 
 const sessionTouch = {
   handler: (request, h) => {

@@ -1,4 +1,4 @@
-import { routingEvents as runtimeRoutingEvents } from "../app/runtime-services.mjs";
+import { routingEvents as runtimeRoutingEvents } from "../demo-runtime-services.mjs";
 
 const routingEvents = {
   handler: (request, h) => {

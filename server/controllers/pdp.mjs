@@ -11,7 +11,7 @@ import {
   setRoutingState,
   resolveBooleanInput,
   sleep,
-} from "../app/runtime-services.mjs";
+} from "../demo-runtime-services.mjs";
 
 const pdp = {
   getLegacy: {

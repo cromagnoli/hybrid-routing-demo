@@ -3,11 +3,10 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const NEXTGEN_ROOT = path.resolve(__dirname, "../../../nextgen-app");
+const NEXTGEN_ROOT = path.resolve(__dirname, "..");
 
 /**
  * Demo runtime always uses Vite dev server (no static build mode in this repo).
- * @returns {boolean}
  */
 export const shouldRunViteDevServer = () => true;
 
@@ -30,7 +29,7 @@ const createViteServer = async () => {
   });
 };
 
-let vite = null;
+let vite: Awaited<ReturnType<typeof createViteServer>> | null = null;
 
 const viteDevServerSingleton = async () => {
   if (!vite) {
@@ -51,13 +50,14 @@ export const tearDownViteDevServer = async () => {
 
 /**
  * Registers Vite middlewares in Hapi request lifecycle.
- * @param {{
- *  hapiRequest: import("@hapi/hapi").Request,
- *  hapiHandler: import("@hapi/hapi").ResponseToolkit
- * }} params
- * @returns {Promise<unknown>}
  */
-export const registerViteDevMiddlewares = async ({ hapiRequest, hapiHandler }) => {
+export const registerViteDevMiddlewares = async ({
+  hapiRequest,
+  hapiHandler,
+}: {
+  hapiRequest: import("@hapi/hapi").Request;
+  hapiHandler: import("@hapi/hapi").ResponseToolkit;
+}) => {
   const viteDevServer = await getViteDevServer();
 
   return new Promise((resolve, reject) => {
@@ -80,7 +80,7 @@ export const getViteBuild = async () => {
   // if (shouldRunViteDevServer()) {
     const viteDevServer = await getViteDevServer();
 
-    return await viteDevServer.ssrLoadModule('virtual:react-router/server-build');
+    return await viteDevServer.ssrLoadModule("virtual:react-router/server-build");
   // }
 
   // const viteStaticBuild = await import('../../build/server/index.mjs');

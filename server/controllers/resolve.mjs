@@ -3,7 +3,7 @@ import {
   evaluateRoutingForDemo,
   getStoredProductName,
   getDemoSessionInfo,
-} from "../app/runtime-services.mjs";
+} from "../demo-runtime-services.mjs";
 
 const resolve = {
   handler: (request, h) => {

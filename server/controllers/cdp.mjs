@@ -3,7 +3,7 @@ import {
   appendRoutingEvent,
   renderLegacyCategoryPage,
   withFrameHeaders,
-} from "../app/runtime-services.mjs";
+} from "../demo-runtime-services.mjs";
 
 const cdp = {
   get: {

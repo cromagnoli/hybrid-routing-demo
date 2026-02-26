@@ -1,4 +1,4 @@
-import { runViteMiddleware } from "../app/runtime-services.mjs";
+import { runViteMiddleware } from "../demo-runtime-services.mjs";
 
 const fallback = {
   unmatched: {

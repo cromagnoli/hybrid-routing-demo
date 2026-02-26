@@ -3,3 +3,5 @@ node_modules
 npm-debug.log*
 .idea
 .react-router
+server/build
+nextgen-app/hybrid-routing/*.js

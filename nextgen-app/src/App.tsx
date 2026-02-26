@@ -101,7 +101,7 @@ const redirectToLegacyFromBoundary = () => {
   window.location.assign(url.toString());
 };
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+class RedirectToLegacyErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
 
   static getDerivedStateFromError() {
@@ -250,9 +250,9 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <ErrorBoundary>
+  <RedirectToLegacyErrorBoundary>
     <AppContent />
-  </ErrorBoundary>
+  </RedirectToLegacyErrorBoundary>
 );
 
 export default App;

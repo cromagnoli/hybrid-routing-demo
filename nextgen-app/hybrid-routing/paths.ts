@@ -1,0 +1,11 @@
+export enum DualPaths {
+  ProductDetail = "/pdp/:productCategory/:productName/:productId",
+}
+
+// Exclude RR internal paths from legacy resolver.
+export enum InternalPaths {
+  ReactRouterManifest = "/__manifest",
+}
+
+export const toReactRouterFileRoutePath = (path: string) =>
+  path.startsWith("/") ? path.slice(1) : path;

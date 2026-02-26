@@ -1,5 +1,5 @@
 import registerRoutes from "./server/init/routes.mjs";
-import { startRuntime, stopRuntime } from "./server/app/runtime-services.mjs";
+import { startRuntime, stopRuntime } from "./server/demo-runtime-services.mjs";
 
 process.on("SIGTERM", async () => {
   await stopRuntime();
