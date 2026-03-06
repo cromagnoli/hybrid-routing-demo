@@ -1,6 +1,6 @@
 const fallback = {
   unmatched: {
-    handler: async (request, h) => result ?? h.response("Not found").code(404),
+    handler: async (_request, h) => h.response("Not found").code(404),
   },
 };
 

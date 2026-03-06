@@ -1,33 +1,32 @@
-import { logger, serializeLogSegment } from "../../server/resources/helpers/logger.mjs";
-import type { ResponseToolkit, ServerRoute } from '@hapi/hapi';
-import { Request as HapiRequest } from '@hapi/hapi';
+import type { Request as HapiRequest, ResponseToolkit, ServerRoute } from "@hapi/hapi";
 import { notFound } from "../../server/controllers/errors.mjs";
+import { logger, serializeLogSegment } from "../../server/resources/helpers/logger.mjs";
+import { evaluateRoutingForDemo, parseContext } from "../../server/demo-runtime-services.mjs";
 import { NEXTGEN_ENABLED_ROUTES } from "./fake-feature-flag.js";
-import { parseContext, evaluateRoutingForDemo } from "../../server/demo-runtime-services.mjs";
 import { DualPaths, InternalPaths } from "./paths.js";
 import { createRequestHandler } from "./react-router-request-response.adapter.js";
 import { getViteBuild } from "./vite.js";
 
-const splitPathSegments = (path: string) => path.split('/').filter(Boolean);
+const splitPathSegments = (path: string) => path.split("/").filter(Boolean);
 
-const removeTrailingSlash = (path: string) => path.endsWith('/') ? path.slice(0, -1) : path;
+const removeTrailingSlash = (path: string) =>
+  path.endsWith("/") ? path.slice(0, -1) : path;
 
-const isDynamicSegment = (segment: string) => segment.startsWith(':');
+const isDynamicSegment = (segment: string) => segment.startsWith(":");
 
-const CLIENT_NAVIGATION_PATH_SUFFIX = '.data';
+const CLIENT_NAVIGATION_PATH_SUFFIX = ".data";
 const internalPaths = Object.values(InternalPaths);
 
-/**
- * Serves as source of truth for RR-enabled paths in the hybrid resolver.
- */
+/** Serves as source of truth for RR-enabled paths in the hybrid resolver. */
 const reactRouterAvailablePaths = {
   ...DualPaths,
 };
 
-/**
- * Checks if a route pattern matches the given path segments.
- */
-const doesRoutePatternMatch = (routePattern: string, pathSegments: string[]): boolean => {
+/** Checks if a route pattern matches the given path segments. */
+const doesRoutePatternMatch = (
+  routePattern: string,
+  pathSegments: string[]
+): boolean => {
   const normalizedPattern = removeTrailingSlash(routePattern);
   const patternSegments = splitPathSegments(normalizedPattern);
 
@@ -47,24 +46,21 @@ const doesRoutePatternMatch = (routePattern: string, pathSegments: string[]): bo
   });
 };
 
-/**
- * Finds the route key that matches the given path.
- */
+/** Finds the route key that matches the given path. */
 const findMatchingRouteKey = (pathSegments: string[]): string | null => {
-  const matchingEntry = Object.entries(reactRouterAvailablePaths).find(([_, routePattern]) =>
+  const matchingEntry = Object.entries(reactRouterAvailablePaths).find(([, routePattern]) =>
     doesRoutePatternMatch(routePattern, pathSegments)
   );
 
   return matchingEntry ? matchingEntry[0] : null;
 };
 
-/**
- * Determines if a given request path should be handled via Next Gen Router.
- */
-const isNextGenPathAvailable = (reqPath: string, nextGenEnabledPages: string[] = []): boolean => {
-  const internalPaths = Object.values(InternalPaths);
-
-  if (reqPath?.endsWith(CLIENT_NAVIGATION_PATH_SUFFIX) || internalPaths.includes(reqPath)) {
+/** Determines if a given request path should be handled via Next Gen Router. */
+const isNextGenPathAvailable = (
+  reqPath: string,
+  nextGenEnabledPages: string[] = []
+): boolean => {
+  if (reqPath.endsWith(CLIENT_NAVIGATION_PATH_SUFFIX) || internalPaths.includes(reqPath)) {
     return true;
   }
 
@@ -75,17 +71,20 @@ const isNextGenPathAvailable = (reqPath: string, nextGenEnabledPages: string[] =
   return matchingRouteKey !== null && nextGenEnabledPages.includes(matchingRouteKey);
 };
 
-export const resolveRouteController = (legacyController: ServerRoute, pathDebugId: string) => ({
+export const resolveRouteController = (
+  legacyController: ServerRoute,
+  pathDebugId: string
+): ServerRoute => ({
   ...legacyController,
   handler: async (...handlerArgs: [HapiRequest, ResponseToolkit]) => {
     try {
       const [request] = handlerArgs;
 
       if (shouldUseNextGenRouter(request)) {
-        logger.info('resolveRouteController', 'Running modern routing for', [
+        logger.info("resolveRouteController", "Running modern routing for", [
           request?.method?.toUpperCase(),
           request?.url?.href,
-          serializeLogSegment({ pathDebugId })
+          serializeLogSegment({ pathDebugId }),
         ]);
 
         const reactRouterRoutesHandler = await getReactRouterRoutesHandler(request);
@@ -93,45 +92,39 @@ export const resolveRouteController = (legacyController: ServerRoute, pathDebugI
         return reactRouterRoutesHandler(...handlerArgs);
       }
 
-      logger.info('resolveRouteController', 'Running legacy routing for', [
+      logger.info("resolveRouteController", "Running legacy routing for", [
         request?.method?.toUpperCase(),
         request?.url?.href,
-        serializeLogSegment({ pathDebugId })
+        serializeLogSegment({ pathDebugId }),
       ]);
 
-      if (typeof legacyController.handler === 'function') {
+      if (typeof legacyController.handler === "function") {
         return legacyController.handler(...handlerArgs);
       }
 
-      throw new Error('Handler is undefined for legacyController');
+      throw new Error("Handler is undefined for legacyController");
     } catch (error) {
       logger.error(
-        'resolveRouteController',
-        'Failure resolving Hapi/ReactRouter route handler. Routing to Hapi 404 page...',
+        "resolveRouteController",
+        "Failure resolving Hapi/ReactRouter route handler. Routing to Hapi 404 page...",
         [serializeLogSegment(error)]
       );
 
       return notFound.handler(...handlerArgs);
     }
-  }
+  },
 });
 
 const isNextGenRoutingEnabled = (context: ReturnType<typeof parseContext>) => {
   const evaluation = evaluateRoutingForDemo(context);
 
-  // These conditions are meant for demo only – Actual implementation was different
-  return (
-      evaluation.route === 'nextgen' &&
-      !evaluation.fallback &&
-      !evaluation.queryLegacy
-  );
-};
+  // Demo-only gate. Real production conditions were broader.
+  return evaluation.route === "nextgen" && !evaluation.fallback && !evaluation.queryLegacy;
+}
 
-/**
- * Determines whether to use the NextGen router based on feature flags and path availability.
- */
+/** Determines whether to use the NextGen router based on feature flags and path availability. */
 export const shouldUseNextGenRouter = (request: HapiRequest): boolean => {
-  const hasLegacyFallbackQuery = request?.url?.searchParams?.get('legacy');
+  const hasLegacyFallbackQuery = request?.url?.searchParams?.get("legacy");
 
   if (hasLegacyFallbackQuery) {
     return false;
@@ -148,12 +141,11 @@ const createReactRouterRoutesHandler = async (request: HapiRequest) => {
 
   return createRequestHandler({
     build,
-    getLoadContext: async () => ({
-      request
-    })
+    getLoadContext: async () => ({ request }),
   });
 };
 
-export const getReactRouterRoutesHandler = async (request: HapiRequest): Promise<ReturnType<typeof createRequestHandler>> => {
-  return await createReactRouterRoutesHandler(request);
-};
+export const getReactRouterRoutesHandler = async (
+  request: HapiRequest
+): Promise<ReturnType<typeof createRequestHandler>> =>
+  await createReactRouterRoutesHandler(request);
