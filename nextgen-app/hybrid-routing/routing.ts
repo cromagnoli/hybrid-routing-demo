@@ -102,7 +102,13 @@ export const resolveRouteController = (
         return legacyController.handler(...handlerArgs);
       }
 
-      throw new Error("Handler is undefined for legacyController");
+      logger.error(
+        "resolveRouteController",
+        "Legacy controller handler is undefined. Routing to Hapi 404 page...",
+        [serializeLogSegment({ pathDebugId })]
+      );
+
+      return notFound.handler(...handlerArgs);
     } catch (error) {
       logger.error(
         "resolveRouteController",
